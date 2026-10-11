@@ -134,13 +134,11 @@ export function SurveyForm({ survey }: { survey: Survey }) {
         {survey.intro && <BodyLong>{survey.intro}</BodyLong>}
         <GuidePanel poster={false}>
           <BodyLong spacing>
-            Svarene er anonyme. Vi lagrer svarene og at de kom fra nettsiden, ikke navn, e-post eller noe annet som
-            knytter dem til deg.
+            Svarene lagres uten navn, e-post eller bruker. Innloggingen brukes bare til å hindre dobbeltsvar: mens
+            undersøkelsen er åpen, lagrer vi en nøkkelbasert sjekksum av e-posten din. Den slettes etter at
+            undersøkelsen har stengt.
           </BodyLong>
-          <BodyLong>
-            Vi bruker innloggingen bare til å hindre at noen svarer to ganger. Siden ingenting knytter svarene til deg,
-            kan de ikke endres eller trekkes tilbake etterpå.
-          </BodyLong>
+          <BodyLong>Svarene kan ikke endres eller trekkes tilbake etterpå.</BodyLong>
         </GuidePanel>
 
         {Object.keys(errors).length > 0 && (

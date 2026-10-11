@@ -131,7 +131,7 @@ sjekken i bakgrunnen rapporterer ikke utfallet. `nav_pilot_up_to_date` og
 - `device_id` = pseudonymisert maskin-ID (se under)
 
 `execution_context` følger alle løpende metrikker som datapunkt-dimensjon.
-`device_id` ligger på `nav_pilot_info` og som resource-attributt.
+`device_id` er resource-attributt og datapunkt-dimensjon på de fleste metrikkene.
 Det betyr at både resource-attributter og datapunkt-dimensjoner kan brukes i spørringer.
 
 **`execution_context`-verdier:**
@@ -148,7 +148,8 @@ Klassifisering prioriterer:
 
 **Hva sendes IKKE:**
 - ✗ Filstier, reponavn, eller prosjektkontekst
-  (unntak: `nav.repo`-slug for navikt-repoer på agent-sessions, se seksjon 3)
+  (unntak: navikt-reponavn som `nav.repo` på agent-sessions, se seksjon 3, og som
+  `nav_repo` på tellerne for modellbruk)
 - ✗ Innhold fra Copilot-instruksjoner eller agenter
 - ✗ Bruker-ID (aldri NAVident, e-post, GitHub-brukernavn)
 - ✗ Git-commit-info eller miljøvariabler
@@ -404,7 +405,7 @@ det er to tall som kan bli uenige.
 ### Personvern-garantier
 - ✅ Ingen IP-adresser eller User-Agent som OTel-attributter i metrikksdata (merk: transport/ingress kan likevel se og evt. logge IP).
 - ✅ Ingen rå maskinidentifikator (hostname/MAC); kun pseudonymisert `device_id` (SHA256-hash, 12 hex-tegn), som fortsatt er en personopplysning
-- ⚠️ `device_id` gir likevel oppløsning per maskin via `nav_pilot_info` (pseudonymt), ikke kun som globale aggregater.
+- ⚠️ `device_id` gir likevel oppløsning per maskin på de fleste metrikkene (pseudonymt), ikke kun som globale aggregater.
   Den kan ikke knyttes til person/team uten en ekstern mapping.
 - ⚠️ Kardinalitet: `device_id` (og `version`) er høy-kardinalitets-etiketter. I en stor pilot kan
   antall tidsserier vokse raskt i Prometheus — vurder å droppe/aggregere `device_id` i collector

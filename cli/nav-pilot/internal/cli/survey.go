@@ -132,11 +132,11 @@ type surveyContext struct {
 // surveyCollected is shown before any question, so nobody answers without
 // knowing what is sent.
 const surveyCollected = "Dette sendes: svarene dine, nav-pilot-versjon, operativsystem, hvilken klient du\n" +
-	"bruker og om lokale modeller er på.\n" +
-	"Dette sendes ikke: navn, GitHub-bruker, enhets-ID, kode eller noe fra øktene dine.\n" +
-	"GitHub-innloggingen brukes bare til å hindre at noen svarer to ganger. Svarene\n" +
-	"lagres uten noe som knytter dem til deg, så de kan ikke endres eller trekkes\n" +
-	"tilbake etterpå."
+	"bruker, om lokale modeller er på, og GitHub-innloggingen din.\n" +
+	"Dette sendes ikke: navn, maskinnummer, kode eller noe fra øktene dine.\n" +
+	"Svarene lagres uten navn, e-post eller bruker. Innloggingen brukes bare til å\n" +
+	"hindre dobbeltsvar: mens undersøkelsen er åpen, lagrer vi en nøkkelbasert\n" +
+	"sjekksum av e-posten din. Den slettes etter at undersøkelsen har stengt."
 
 func surveyStatePath() (string, error) {
 	dir, err := telemetrypkg.GetConfigDir()
