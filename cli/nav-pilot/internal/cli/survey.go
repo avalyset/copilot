@@ -78,6 +78,7 @@ type surveyQuestion struct {
 	Labels     []string `json:"labels,omitempty"`
 	Options    []string `json:"options,omitempty"`
 	MaxChoices int      `json:"max_choices,omitempty"`
+	Exclusive  string   `json:"exclusive,omitempty"`
 	Other      string   `json:"other,omitempty"` // one more option, with a short free text sent as <id>.other
 	MaxLen     int      `json:"max_length,omitempty"`
 	SkipIf     *struct {
@@ -541,14 +542,15 @@ func runSurveyForm(s surveyDef) (map[string]any, bool) {
 				ms = ms.Limit(q.MaxChoices)
 				desc = fmt.Sprintf("Velg opptil %d. %s", q.MaxChoices, desc)
 			}
-			if q.Required {
-				ms = ms.Validate(func(v []string) error {
-					if len(v) == 0 {
-						return errors.New("velg minst ett svar")
-					}
-					return nil
-				})
-			}
+			ms = ms.Validate(func(v []string) error {
+				if q.Required && len(v) == 0 {
+					return errors.New("velg minst ett svar")
+				}
+				if len(v) > 1 && slices.Contains(v, q.Exclusive) {
+					return fmt.Errorf("«%s» kan ikke kombineres med andre svar", q.Exclusive)
+				}
+				return nil
+			})
 			field = ms.Description(desc)
 		case "text":
 			in := huh.NewText().Title(q.Text).CharLimit(q.MaxLen).Value(&picks[i])

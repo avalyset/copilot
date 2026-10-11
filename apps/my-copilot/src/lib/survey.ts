@@ -17,6 +17,7 @@ export type SurveyQuestion = {
   labels?: string[];
   options?: string[];
   max_choices?: number;
+  exclusive?: string;
   /** One more option, after options, that takes a short free text sent as `<id>.other` (otherKey). */
   other?: string;
   max_length?: number;
@@ -113,6 +114,14 @@ export function isSkipped(q: SurveyQuestion, answers: Answers): boolean {
   if (!q.skip_if) return false;
   const a = answers[q.skip_if.question];
   return Array.isArray(a) ? a.includes(q.skip_if.answer) : a === q.skip_if.answer;
+}
+
+/** A multi answer after a change: the exclusive option (like "I use none")
+ * stands alone, so picking it drops the rest and picking another drops it. */
+export function exclusivePick(q: SurveyQuestion, prev: string[], next: string[]): string[] {
+  const added = next.find((v) => !prev.includes(v));
+  if (!q.exclusive || added === undefined) return next;
+  return added === q.exclusive ? [added] : next.filter((v) => v !== q.exclusive);
 }
 
 export async function submitAnswers(userToken: string, surveyId: string, answers: Answers): Promise<SubmitResult> {

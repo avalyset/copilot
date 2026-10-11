@@ -3,6 +3,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   choseOther,
+  exclusivePick,
   openSurveyTitles,
   surveyWindow,
   getActiveSurveys,
@@ -26,6 +27,16 @@ describe("isSkipped", () => {
     expect(isSkipped(q, { tools: ["a", "none"] })).toBe(true);
     expect(isSkipped(q, { tools: ["a"] })).toBe(false);
     expect(isSkipped({ ...q, skip_if: undefined }, { tools: "none" })).toBe(false);
+  });
+});
+
+describe("exclusivePick", () => {
+  const q: SurveyQuestion = { id: "tools", type: "multi", text: "?", options: ["a", "b", "none"], exclusive: "none" };
+  it("keeps the exclusive option alone", () => {
+    expect(exclusivePick(q, ["a"], ["a", "none"])).toEqual(["none"]);
+    expect(exclusivePick(q, ["none"], ["none", "a"])).toEqual(["a"]);
+    expect(exclusivePick(q, ["a"], ["a", "b"])).toEqual(["a", "b"]);
+    expect(exclusivePick({ ...q, exclusive: undefined }, ["a"], ["a", "none"])).toEqual(["a", "none"]);
   });
 });
 
@@ -111,6 +122,7 @@ describe("types follow copilot-survey's schema.json", () => {
     labels: [],
     options: [],
     max_choices: 0,
+    exclusive: "",
     other: "",
     max_length: 0,
     skip_if: { question: "", answer: "" },
