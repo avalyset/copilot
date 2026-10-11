@@ -235,7 +235,7 @@ export default async function TrenderPage({
           kohorter som vises. Segmentene (<code>/usage/segments</code>) har hver sin «Kilde og metode» under grafen.
           «Hva har endret seg» regnes ut fra de samme tallene som grafene. Klientene i nav-pilot kommer fra telemetrien
           i nav-pilot, som lagres daglig i <code>mimir_daily</code> (<code>/usage/nav-pilot-clients</code>). Bare
-          andeler hentes ut, ikke antall. «Sist oppdatert» er siste dag med bruksdata i<code>v_daily_summary</code>.
+          andeler hentes ut, ikke antall. «Sist oppdatert» er siste dag med bruksdata i <code>v_daily_summary</code>.
         </>
       }
     >

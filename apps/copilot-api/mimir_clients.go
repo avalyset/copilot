@@ -56,15 +56,20 @@ func clientChart(rows []mimirClientRow) SegmentChart {
 
 func (bq *BigQueryClient) GetMimirClientShares(ctx context.Context) (SegmentChart, error) {
 	q := bq.client.Query(fmt.Sprintf(`
+      WITH t AS (SELECT * FROM %[1]s),
+      -- Every day the job stored, so a day where all clients fell under the
+      -- producer's k>=5 floor still counts in the divisor.
+      days AS (SELECT FORMAT_DATE('%%Y-%%m', day) AS month, COUNT(DISTINCT day) AS days FROM t GROUP BY month)
       SELECT
-        FORMAT_DATE('%%Y-%%m', day) AS month,
-        COUNT(DISTINCT day) AS days,
-        SUM(IF(client = 'copilot', devices, 0)) AS copilot,
-        SUM(IF(client = 'opencode', devices, 0)) AS opencode,
-        SUM(IF(client IN ('copilot', 'opencode'), 0, devices)) AS other
-      FROM %s
-      WHERE family = 'nav_pilot_config' AND counter_reliable
-      GROUP BY month
+        month,
+        days.days,
+        COALESCE(SUM(IF(client = 'copilot', devices, 0)), 0) AS copilot,
+        COALESCE(SUM(IF(client = 'opencode', devices, 0)), 0) AS opencode,
+        COALESCE(SUM(IF(client IN ('copilot', 'opencode'), 0, devices)), 0) AS other
+      FROM days
+      LEFT JOIN t ON FORMAT_DATE('%%Y-%%m', t.day) = days.month
+        AND t.family = 'nav_pilot_config' AND t.counter_reliable
+      GROUP BY month, days.days
       ORDER BY month
     `, bq.tableRef(mimirDataset, "mimir_daily")))
 	it, err := q.Read(ctx)

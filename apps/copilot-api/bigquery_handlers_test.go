@@ -74,6 +74,8 @@ type mockBigQueryClient struct {
 	creditsPerUserErr  error
 	copilotPRs         []CopilotPRMonth
 	copilotPRsErr      error
+	clientShares       SegmentChart
+	clientSharesErr    error
 	cohortRetention    []CohortRetention
 	cohortRetentionErr error
 	segments           *UserSegments
@@ -308,7 +310,7 @@ func (m *mockBigQueryClient) GetCopilotPRsMonthly(_ context.Context) ([]CopilotP
 }
 
 func (m *mockBigQueryClient) GetMimirClientShares(_ context.Context) (SegmentChart, error) {
-	return SegmentChart{}, nil
+	return m.clientShares, m.clientSharesErr
 }
 
 func TestHandleDailyMetrics(t *testing.T) {
@@ -734,6 +736,20 @@ func TestHandleNewStatsEndpoints(t *testing.T) {
 			mock:       &mockBigQueryClient{copilotPRsErr: errors.New("bq")},
 			req:        httptest.NewRequest(http.MethodGet, "/api/v1/copilot/usage/copilot-prs", nil),
 			handle:     (*BigQueryHandlers).handleCopilotPRsMonthly,
+			wantStatus: http.StatusInternalServerError,
+		},
+		{
+			name:       "nav-pilot clients success",
+			mock:       &mockBigQueryClient{clientShares: clientChart([]mimirClientRow{{Month: "2026-09", Days: 1, Copilot: 30, Opencode: 20}})},
+			req:        httptest.NewRequest(http.MethodGet, "/api/v1/copilot/usage/nav-pilot-clients", nil),
+			handle:     (*BigQueryHandlers).handleMimirClientShares,
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "nav-pilot clients error",
+			mock:       &mockBigQueryClient{clientSharesErr: errors.New("bq")},
+			req:        httptest.NewRequest(http.MethodGet, "/api/v1/copilot/usage/nav-pilot-clients", nil),
+			handle:     (*BigQueryHandlers).handleMimirClientShares,
 			wantStatus: http.StatusInternalServerError,
 		},
 		{
