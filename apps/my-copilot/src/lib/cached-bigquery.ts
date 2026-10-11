@@ -10,6 +10,7 @@ import { backendRequest } from "./backend-api";
 import type {
   AdoptionData,
   CohortRetention,
+  SegmentChart,
   UserSegments,
   CopilotPRMonth,
   CreditsPerUserMonth,
@@ -260,6 +261,17 @@ export async function getCopilotPRsMonthly(token: string): Promise<{
     backendRequest<CopilotPRMonth[]>("/api/v1/copilot/usage/copilot-prs", token)
   );
   return { months: result.data, error: result.error };
+}
+
+export async function getNavPilotClients(token: string): Promise<{
+  chart: SegmentChart;
+  error: string | null;
+}> {
+  const empty: SegmentChart = { months: [], bands: [] };
+  const result = await fetchWithFallback("getNavPilotClients", empty, () =>
+    backendRequest<SegmentChart>("/api/v1/copilot/usage/nav-pilot-clients", token)
+  );
+  return { chart: result.data, error: result.error };
 }
 
 export async function getCohortRetention(token: string): Promise<{

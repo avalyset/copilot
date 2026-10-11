@@ -307,6 +307,10 @@ func (m *mockBigQueryClient) GetCopilotPRsMonthly(_ context.Context) ([]CopilotP
 	return m.copilotPRs, m.copilotPRsErr
 }
 
+func (m *mockBigQueryClient) GetMimirClientShares(_ context.Context) (SegmentChart, error) {
+	return SegmentChart{}, nil
+}
+
 func TestHandleDailyMetrics(t *testing.T) {
 	tests := []struct {
 		name             string

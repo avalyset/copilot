@@ -4,19 +4,26 @@ import { Alert, BodyShort, Skeleton } from "@navikt/ds-react";
 import { Table, TableBody, TableDataCell, TableHeader, TableHeaderCell, TableRow } from "@navikt/ds-react/Table";
 import { InsightPage, InsightSection } from "@/components/insight-page";
 import ErrorState from "@/components/error-state";
-import { CopilotPRChart, CreditsPerUserChart, FamilyShareChart } from "@/components/charts/MonthlyTrendCharts";
+import {
+  CopilotPRChart,
+  CreditsPerUserChart,
+  FamilyShareChart,
+  ShareChart,
+} from "@/components/charts/MonthlyTrendCharts";
 import {
   getBillingModelBreakdown,
   getCohortRetention,
   getCopilotPRsMonthly,
   getCreditsPerUserMonthly,
   getDailySummary,
+  getNavPilotClients,
 } from "@/lib/cached-bigquery";
 import { getUser, getUserToken } from "@/lib/auth";
 import { currentMonthUTC } from "@/lib/month-utils";
 import { formatNumber } from "@/lib/format";
 import {
   annotationsFor,
+  chartShares,
   familyShares,
   monthLabel,
   parsePeriod,
@@ -103,6 +110,30 @@ async function CopilotPRs({ token, start, all }: ChartProps) {
   );
 }
 
+async function NavPilotClients({ token, start, all }: ChartProps) {
+  const { chart, error } = await getNavPilotClients(token);
+  if (error) return <BodyShort>{`Kunne ikke hente klienter i nav-pilot: ${error}`}</BodyShort>;
+  const { months, clamped, first } = visibleMonths(chart.months, start);
+  if (!months.length) return <BodyShort>Ingen data om klienter i perioden.</BodyShort>;
+  return (
+    <>
+      <BodyShort size="small" textColor="subtle">
+        Hvilken klient utviklerne starter med nav-pilot: Copilot CLI eller opencode. Andelen er regnet av maskiner per
+        dag, summert over måneden, og avrundet til hele prosent. En klient får eget navn bare når den har minst 20
+        maskiner per dag i snitt. Ellers telles den under «Andre».
+      </BodyShort>
+      <DataStart clamped={clamped} first={first} />
+      <ShareChart
+        months={months}
+        series={chartShares(chart, months)}
+        stacked
+        label="Andel maskiner per klient i nav-pilot per måned"
+        annotations={annotationsFor(CHART_ANNOTATIONS, months, all)}
+      />
+    </>
+  );
+}
+
 /** user_metrics starts 2025-10-10, so the October 2025 cohort mixes earlier users with new ones and cannot tell them apart. */
 const CENSORED_COHORT = "2025-10";
 
@@ -184,7 +215,7 @@ export default async function TrenderPage({
     <InsightPage
       title="Trender"
       description="Copilot i Nav måned for måned."
-      intro="Her ser du hvordan bruken av Copilot i Nav endrer seg over tid: hvor mye folk bruker den, på hvilken måte, hvor mange som går opp eller ned, og hvor mange nye brukere som fortsetter. Nederst ser du kostnad per modellfamilie, AI Credits per bruker og Copilot i pull requests. Ingen personer eller team navngis. Hver graf starter der dataene starter."
+      intro="Her ser du hvordan bruken av Copilot i Nav endrer seg over tid: hvor mye folk bruker den, på hvilken måte, hvor mange som går opp eller ned, og hvor mange nye brukere som fortsetter. Nederst ser du kostnad per modellfamilie, AI Credits per bruker, Copilot i pull requests og hvilken klient nav-pilot startes med. Ingen personer eller team navngis. Hver graf starter der dataene starter."
       updated={async () => (await getDailySummary(token)).summary?.date}
       hourly
       source={
@@ -202,8 +233,9 @@ export default async function TrenderPage({
           skille dem som brukte Copilot fra før, fra dem som var nye. Tallene regnes ut per person, men bare summene
           vises. Små grupper vises også, fordi ingen person eller team navngis. Perioden du velger, styrer hvilke
           kohorter som vises. Segmentene (<code>/usage/segments</code>) har hver sin «Kilde og metode» under grafen.
-          «Hva har endret seg» regnes ut fra de samme tallene som grafene. «Sist oppdatert» er siste dag med bruksdata i
-          <code>v_daily_summary</code>.
+          «Hva har endret seg» regnes ut fra de samme tallene som grafene. Klientene i nav-pilot kommer fra telemetrien
+          i nav-pilot, som lagres daglig i <code>mimir_daily</code> (<code>/usage/nav-pilot-clients</code>). Bare
+          andeler hentes ut, ikke antall. «Sist oppdatert» er siste dag med bruksdata i<code>v_daily_summary</code>.
         </>
       }
     >
@@ -236,6 +268,9 @@ export default async function TrenderPage({
       </Section>
       <Section id="copilot-i-pull-requests" title="Copilot i pull requests">
         <CopilotPRs {...props} />
+      </Section>
+      <Section id="klienter-i-nav-pilot" title="Klienter i nav-pilot">
+        <NavPilotClients {...props} />
       </Section>
     </InsightPage>
   );

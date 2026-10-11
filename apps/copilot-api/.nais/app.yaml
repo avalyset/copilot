@@ -95,6 +95,8 @@ spec:
         permission: READ
       - name: copilot_adoption
         permission: READ
+      - name: copilot_metrics_staging
+        permission: READ
 
   accessPolicy:
     inbound:

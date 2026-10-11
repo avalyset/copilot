@@ -392,6 +392,7 @@ type BigQueryQuerier interface {
 	GetRepositoryUsage(ctx context.Context) ([]RepositoryUsage, error)
 	GetCreditsPerUserMonthly(ctx context.Context) ([]CreditsPerUserMonth, error)
 	GetCopilotPRsMonthly(ctx context.Context) ([]CopilotPRMonth, error)
+	GetMimirClientShares(ctx context.Context) (SegmentChart, error)
 	GetCohortRetention(ctx context.Context) ([]CohortRetention, error)
 	GetUserSegments(ctx context.Context) (*UserSegments, error)
 	GetFactAggregates(ctx context.Context) (*FactAggregates, error)
