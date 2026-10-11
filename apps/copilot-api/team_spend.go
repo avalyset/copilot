@@ -182,14 +182,14 @@ WITH completed AS (
  SELECT COALESCE(SUM(net),0) net FROM billed
 ), no_usage AS (
  SELECT COALESCE(SUM(b.net),0) net FROM billed b
- WHERE NOT EXISTS (SELECT 1 FROM usage_days u WHERE u.user_id=b.user_id AND u.month=b.month AND u.gross>0)
+ WHERE NOT EXISTS (SELECT 1 FROM usage_days u WHERE u.user_id=b.user_id AND u.month=b.month AND (u.gross>0 OR u.month<DATE '2026-06-01'))
 ), enterprise_snapshot AS (
- SELECT COUNTIF(sku='done') markers,COALESCE(SUM(IF(sku IN ('Copilot AI Credits','Copilot Cloud Agent'),net_amount,0)),0) net
+ SELECT COUNTIF(sku='done') markers,COALESCE(SUM(IF(sku IN (`+billedSKUs+`),net_amount,0)),0) net
  FROM %s WHERE month=DATE(@month) AND scope_id='nav' AND user_id=''
 ), enterprise AS (
  SELECT COALESCE(SUM(net_amount),0) net FROM %s
  WHERE day>=DATE(@month) AND day<DATE_ADD(DATE(@month),INTERVAL 1 MONTH)
- AND scope_id='nav' AND product='Copilot' AND sku IN ('Copilot AI Credits','Copilot Cloud Agent')
+ AND scope_id='nav' AND product='Copilot' AND sku IN (`+billedSKUs+`)
 )
 SELECT IFNULL(t.team_id,'') team_id,IFNULL(t.team_slug,'') team_slug,
  IFNULL(t.users,0) users,IFNULL(t.net,0) net,
@@ -229,13 +229,25 @@ func (bq *BigQueryClient) teamUsageCTEs() string {
 	return fmt.Sprintf(`usage_days AS (
  SELECT day,DATE_TRUNC(day,MONTH) month,JSON_VALUE(raw_record,'$.user_id') user_id,
    COALESCE(SAFE_CAST(JSON_VALUE(raw_record,'$.ai_credits_used') AS FLOAT64),0) gross
- FROM %s WHERE day>=DATE(@from) AND day<DATE(@to)
+ FROM %[1]s WHERE day>=DATE(@from) AND day<DATE(@to)
    AND scope='enterprise' AND scope_id='nav'
 ), memberships AS (
  SELECT DISTINCT day,DATE_TRUNC(day,MONTH) month,JSON_VALUE(raw_record,'$.user_id') user_id,
  JSON_VALUE(raw_record,'$.team_id') team_id,JSON_VALUE(raw_record,'$.slug') team_slug
- FROM %s WHERE day>=DATE(@from) AND day<DATE(@to)
+ FROM %[2]s WHERE day>=DATE(@from) AND day<DATE(@to)
  AND scope='enterprise' AND scope_id='nav' AND JSON_VALUE(raw_record,'$.slug')!='nav-it-github-users'
+ UNION DISTINCT
+ -- user_teams starts 2026-05-06. Every day before the first snapshot uses
+ -- each user's earliest known teams (all teams on their first snapshot day),
+ -- usage or not, so billed members without usage count for their team too.
+ SELECT d day,DATE_TRUNC(d,MONTH) month,f.user_id,f.team_id,f.team_slug FROM (
+  SELECT user_id,team_id,team_slug FROM (
+   SELECT day,JSON_VALUE(raw_record,'$.user_id') user_id,JSON_VALUE(raw_record,'$.team_id') team_id,
+    JSON_VALUE(raw_record,'$.slug') team_slug,MIN(day) OVER(PARTITION BY JSON_VALUE(raw_record,'$.user_id')) first_day
+   FROM %[2]s WHERE scope='enterprise' AND scope_id='nav')
+  WHERE day=first_day AND team_slug!='nav-it-github-users') f
+ CROSS JOIN UNNEST(GENERATE_DATE_ARRAY(DATE(@from),LEAST(DATE_SUB(DATE(@to),INTERVAL 1 DAY),
+  (SELECT DATE_SUB(MIN(day),INTERVAL 1 DAY) FROM %[2]s WHERE scope='enterprise' AND scope_id='nav')))) d
 )`, bq.tableRef(bq.metricsDataset, "user_metrics"), bq.tableRef(bq.metricsDataset, "user_teams"))
 }
 
@@ -244,10 +256,14 @@ func (bq *BigQueryClient) teamUsageCTEs() string {
 func (bq *BigQueryClient) teamNetCTEs() string {
 	return fmt.Sprintf(`billed AS (
  SELECT month,user_id,SUM(net_amount) net
- FROM %s WHERE month>=DATE(@from) AND month<DATE(@to) AND scope_id='nav' AND user_id!='' AND sku IN ('Copilot AI Credits','Copilot Cloud Agent')
+ FROM %s WHERE month>=DATE(@from) AND month<DATE(@to) AND scope_id='nav' AND user_id!='' AND sku IN (`+billedSKUs+`)
  GROUP BY month,user_id
 ), weighted AS (
- SELECT u.day,u.user_id,b.net * SAFE_DIVIDE(u.gross,SUM(u.gross) OVER(PARTITION BY u.month,u.user_id)) net
+ -- Months before June 2026 were billed as premium requests and user_metrics
+ -- has no ai_credits_used for them: net is spread evenly over the usage days.
+ SELECT u.day,u.user_id,b.net * IF(u.month<DATE '2026-06-01',
+   1/COUNT(*) OVER(PARTITION BY u.month,u.user_id),
+   SAFE_DIVIDE(u.gross,SUM(u.gross) OVER(PARTITION BY u.month,u.user_id))) net
  FROM usage_days u JOIN billed b USING(month,user_id)
 ), daily AS (
  SELECT day,user_id,net FROM weighted WHERE net IS NOT NULL
@@ -269,6 +285,10 @@ func (c *CachedBigQueryClient) GetTeamNetOverview(ctx context.Context, month str
 		return c.client.GetTeamNetOverview(ctx, month)
 	})
 }
+
+// billedSKUs are the per-user Copilot SKUs every net query counts: AI credits
+// from June 2026, premium requests before that.
+const billedSKUs = "'Copilot AI Credits','Copilot Cloud Agent','Copilot Premium Request','Coding Agent Premium Request'"
 
 const minTeamContributors = 5
 

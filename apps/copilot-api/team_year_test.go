@@ -23,7 +23,7 @@ func TestTeamYearOverviewBasisAndSuppression(t *testing.T) {
 	}
 	rows := []teamYearRow{
 		row("2026-04", false, 0, 0), // before membership history
-		row("2026-05", true, 9, 9),  // net complete but before per-user gross
+		row("2026-05", true, 0, 9),  // premium requests: net only
 		row("2026-06", true, 6, 4),  // net hidden, gross shown
 		row("2026-07", false, 4, 0), // gross, under five
 		row("2026-08", true, 6, 5),  // net
@@ -38,7 +38,7 @@ func TestTeamYearOverviewBasisAndSuppression(t *testing.T) {
 		net, gross   bool
 	}{
 		{"2026-04", basisNone, false, false, false},
-		{"2026-05", basisNone, false, false, false},
+		{"2026-05", basisPremium, false, true, false},
 		{"2026-06", basisNet, true, false, true},
 		{"2026-07", basisGross, true, false, false},
 		{"2026-08", basisNet, false, true, true},
@@ -249,7 +249,7 @@ func TestTeamYearMatchesMonthEndpoints(t *testing.T) {
 			if (want.grossUsers > 0) != (m.GrossUSD != nil) || (m.GrossUSD != nil && *m.GrossUSD != want.gross) {
 				t.Errorf("%s %s gross %v, team-gross %v", id, m.Month, m.GrossUSD, want.gross)
 			}
-			if m.Basis == basisNet && ((want.netUsers > 0) != (m.NetUSD != nil) || (m.NetUSD != nil && (*m.NetUSD != want.net || *m.Users != want.netUsers))) {
+			if (m.Basis == basisNet || m.Basis == basisPremium) && ((want.netUsers > 0) != (m.NetUSD != nil) || (m.NetUSD != nil && (*m.NetUSD != want.net || *m.Users != want.netUsers))) {
 				t.Errorf("%s %s net %v/%v, team-net %v/%d", id, m.Month, m.NetUSD, m.Users, want.net, want.netUsers)
 			}
 			if m.Basis == basisGross && m.Users != nil && *m.Users != want.grossUsers {

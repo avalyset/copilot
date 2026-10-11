@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -154,7 +155,46 @@ SELECT COUNT(*) n, SUM(net_amount) net FROM snapshot;`)
 	}
 }
 
-func (f *billingUserFetcherTest) FetchUserAICreditUsage(_ context.Context, login string, month time.Time) (*BillingUsageResponse, error) {
+func TestUserBillingPremiumRequestMonths(t *testing.T) {
+	for _, tc := range []struct {
+		month time.Time
+		path  string
+	}{
+		{time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC), "/enterprises/nav/settings/billing/premium_request/usage"},
+		{time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC), "/enterprises/nav/settings/billing/ai_credit/usage"},
+	} {
+		client := NewBillingClient("test", "nav")
+		var requested []string
+		client.httpClient.Transport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			requested = append(requested, req.URL.Path+"?user="+req.URL.Query().Get("user"))
+			body := `{"user":"` + req.URL.Query().Get("user") + `","enterprise":"nav","timePeriod":{"year":2026,"month":` + tc.month.Format("1") + `},"usageItems":[
+{"product":"Copilot","sku":"Copilot Premium Request","grossAmount":2,"netAmount":1},
+{"product":"Copilot","sku":"Coding Agent Premium Request","grossAmount":4,"netAmount":3},
+{"product":"Actions","sku":"Actions Linux","grossAmount":9,"netAmount":9}]}`
+			return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(body))}, nil
+		})
+		response, err := client.FetchUserBillingUsage(context.Background(), "one", tc.month)
+		if err != nil {
+			t.Fatal(err)
+		}
+		// The enterprise total must come from the same product as the user rows.
+		if _, err := client.FetchEnterpriseAICreditUsage(context.Background(), tc.month); err != nil {
+			t.Fatal(err)
+		}
+		if want := []string{tc.path + "?user=one", tc.path + "?user="}; !slices.Equal(requested, want) {
+			t.Errorf("month %s requested %v, want %v", tc.month.Format("2006-01"), requested, want)
+		}
+		net := map[string]float64{}
+		for _, row := range billingRows(response, tc.month, "nav", "1", "one") {
+			net[row.SKU] = row.NetAmount
+		}
+		if len(net) != 3 || net["Copilot Premium Request"] != 1 || net["Coding Agent Premium Request"] != 3 {
+			t.Fatalf("premium request rows: %v", net)
+		}
+	}
+}
+
+func (f *billingUserFetcherTest) FetchUserBillingUsage(_ context.Context, login string, month time.Time) (*BillingUsageResponse, error) {
 	f.calls++
 	if f.err != nil {
 		return nil, f.err
