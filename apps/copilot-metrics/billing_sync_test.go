@@ -137,7 +137,13 @@ func TestClosedBillingMonths(t *testing.T) {
 	if got := closedBillingMonths(billingSyncStart); len(got) != 0 {
 		t.Fatal("current month selected")
 	}
-	got := closedBillingMonths(time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC))
+	if got := closedBillingMonths(time.Date(2026, 11, billingSettleDay-1, 23, 0, 0, 0, time.UTC)); len(got) != 0 {
+		t.Fatalf("month closed before settling: %v", got)
+	}
+	if got := closedBillingMonths(time.Date(2026, 11, billingSettleDay, 0, 0, 0, 0, time.UTC)); len(got) != 1 {
+		t.Fatalf("month not closed after settling: %v", got)
+	}
+	got := closedBillingMonths(time.Date(2027, 1, billingSettleDay, 0, 0, 0, 0, time.UTC))
 	if len(got) != 3 || got[0].Format("2006-01") != "2026-12" || got[2].Format("2006-01") != "2026-10" {
 		t.Fatalf("backlog not discovered: %v", got)
 	}
@@ -180,7 +186,7 @@ func TestBillingSyncIdentityAndResume(t *testing.T) {
 	if err := syncBillingMonth(context.Background(), fetcher, store, &Config{EnterpriseSlug: "nav"}, month, 0); err != nil {
 		t.Fatal(err)
 	}
-	if !store.complete || fetcher.calls != 2 || store.rows[":Copilot AI Credits"].NetAmount != 8 {
+	if !store.complete || fetcher.calls != 2 || store.rows[":Copilot AI Credits"].NetAmount != 8 || len(store.runs) != 1 || store.runs[0][1] != 8 {
 		t.Fatal("resume did not publish enterprise snapshot")
 	}
 	if _, ok := store.rows["1:identity_unresolved"]; ok {
@@ -193,6 +199,11 @@ func TestBillingSyncDoesNotPublishFailedReconciliation(t *testing.T) {
 	fetcher := &syncFetcherTest{identity: map[string]string{"one": "1"}, enterpriseErr: errors.New("failed"), billingUserFetcherTest: billingUserFetcherTest{items: []BillingUsageItem{}}}
 	if err := syncBillingMonth(context.Background(), fetcher, store, &Config{EnterpriseSlug: "nav"}, billingSyncStart, 0); err == nil || store.complete || !store.done["1"] {
 		t.Fatal("failed reconciliation published or lost user checkpoint")
+	}
+	// A budget hit at the enterprise fetch is a clean checkpoint, not an alert.
+	fetcher.enterpriseErr = errBillingBudget
+	if err := syncBillingMonth(context.Background(), fetcher, store, &Config{EnterpriseSlug: "nav"}, billingSyncStart, 0); err != errBillingBudget || store.complete {
+		t.Fatalf("budget hit at publish was not a bare checkpoint: %v", err)
 	}
 }
 
