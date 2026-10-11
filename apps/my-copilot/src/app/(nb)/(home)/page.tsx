@@ -13,6 +13,8 @@ import { NavCard } from "@/components/navigation/nav-card";
 import { HeroNetwork } from "@/components/hero-network/hero-network";
 import { getAllCustomizations } from "@/lib/customizations";
 import { getMcpServers } from "@/lib/mcp-registry";
+import { SurveyNotice } from "@/components/survey-notice";
+import { openSurveyTitles } from "@/lib/survey";
 
 export default async function Home() {
   const [user, videos, mcpServers] = await Promise.all([getUser(false), getPublicVideoFeed(5), getMcpServers()]);
@@ -59,6 +61,8 @@ export default async function Home() {
           paddingInline={{ xs: "space-16", sm: "space-20", md: "space-32", lg: "space-40" }}
         >
           <VStack gap={{ xs: "space-24", md: "space-32" }}>
+            <SurveyNotice titles={openSurveyTitles()} />
+
             <Box className="reveal-section">
               <InsightStrip />
             </Box>

@@ -52,6 +52,21 @@ export type ActiveSurveys = { status: "ok"; surveys: Survey[] } | { status: "err
  * copilot-survey) means no open survey; an unreachable or failing copilot-survey
  * is an error, so the page does not claim the survey has closed.
  */
+// ponytail: copilot-survey serves only open surveys, so the page reads the
+// window around them from here. Update it when the next survey is scheduled;
+// a schedule endpoint in copilot-survey would replace it.
+export const SURVEY_SCHEDULE = { starts: "2026-10-13", ends: "2026-10-27" };
+
+/** Where today (UTC, as copilot-survey counts) falls against a window: before it, after it, or neither. */
+export function surveyWindow(
+  today: string = new Date().toISOString().slice(0, 10),
+  schedule: { starts: string; ends: string } = SURVEY_SCHEDULE
+): "before" | "after" | undefined {
+  if (today < schedule.starts) return "before";
+  if (today > schedule.ends) return "after";
+  return undefined;
+}
+
 export async function getActiveSurveys(): Promise<ActiveSurveys> {
   const url = process.env.COPILOT_SURVEY_URL;
   if (!url) return { status: "ok", surveys: [] };
@@ -65,6 +80,14 @@ export async function getActiveSurveys(): Promise<ActiveSurveys> {
     return { status: "error" };
   }
 }
+
+/**
+ * The titles of the open surveys, for SurveyNotice. Pages pass the promise
+ * without awaiting it, so a slow copilot-survey never holds them up, and only
+ * the titles reach the client.
+ */
+export const openSurveyTitles = (): Promise<string[]> =>
+  getActiveSurveys().then((a) => (a.status === "ok" ? a.surveys.map((s) => s.title) : []));
 
 /** The values of a scale or matrix question. copilot-survey leaves out min 0, as the terminal survey reads it. */
 export function scaleSteps(q: SurveyQuestion): number[] {
