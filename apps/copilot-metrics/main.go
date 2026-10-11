@@ -234,6 +234,10 @@ func main() {
 		seatCountsReady = false
 	}
 
+	// A seat snapshot cannot be backfilled, so a setup failure must fail the
+	// job (the other steps still run) and let the platform retry the day.
+	copilotSeatsErr := bqClient.EnsureCopilotSeatsTableExists(ctx)
+
 	teamMembersReady := true
 	if err := bqClient.EnsureTeamMembersTableExists(ctx); err != nil {
 		slog.Error("Failed to ensure team_members table exists (skipping team members)", "error", err)
@@ -430,6 +434,14 @@ func main() {
 		} else {
 			slog.Error("Skipping seat count ingestion: seat_counts table unavailable")
 		}
+		// ponytail: reads the seat list a second time after FetchSeatCounts;
+		// share one fetch if the extra ~30 API pages a night ever matter.
+		steps = append(steps, ingestStep{"copilot seats", func() error {
+			if copilotSeatsErr != nil {
+				return fmt.Errorf("ensure copilot_seats table: %w", copilotSeatsErr)
+			}
+			return ingestTodayCopilotSeats(ctx, ghClient.FetchCopilotSeats, bqClient.ReplaceCopilotSeats, time.Now())
+		}})
 		// Non-fatal: needs the Members: read permission, which must not block
 		// the main ingestion if it is missing.
 		if teamMembersReady {

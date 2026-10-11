@@ -64,6 +64,15 @@ export default function TeamYearCost({ data }: { data: TeamYearOverview }) {
               <TableColumnHeader scope="col" align="right">
                 Netto uten bruk
               </TableColumnHeader>
+              <TableColumnHeader scope="col" align="right">
+                Medlemmer med lisens
+              </TableColumnHeader>
+              <TableColumnHeader scope="col" align="right">
+                Lisenser (anslag)
+              </TableColumnHeader>
+              <TableColumnHeader scope="col" align="right">
+                Totalt med lisenser
+              </TableColumnHeader>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -81,6 +90,11 @@ export default function TeamYearCost({ data }: { data: TeamYearOverview }) {
                 <TableDataCell align="right">{m.basis === "net" ? cell(m, m.net_usd) : "—"}</TableDataCell>
                 <TableDataCell align="right">{m.basis === "none" ? "—" : cell(m, m.gross_usd)}</TableDataCell>
                 <TableDataCell align="right">{m.basis === "net" ? cell(m, m.no_usage_net_usd) : "—"}</TableDataCell>
+                <TableDataCell align="right">{m.seat_months != null ? formatNumber(m.seat_months) : "—"}</TableDataCell>
+                <TableDataCell align="right">
+                  {m.licence_usd_estimate != null ? formatUSD(m.licence_usd_estimate) : "—"}
+                </TableDataCell>
+                <TableDataCell align="right">{m.total_usd != null ? formatUSD(m.total_usd) : "—"}</TableDataCell>
               </TableRow>
             ))}
           </TableBody>

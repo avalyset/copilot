@@ -588,9 +588,12 @@ type copilotSeatResponse struct {
 
 type copilotSeat struct {
 	Assignee struct {
+		ID    int64  `json:"id"`
 		Login string `json:"login"`
 	} `json:"assignee"`
-	PendingCancellationDate string `json:"pending_cancellation_date"`
+	PlanType                string    `json:"plan_type"`
+	CreatedAt               time.Time `json:"created_at"`
+	PendingCancellationDate string    `json:"pending_cancellation_date"`
 }
 
 // SeatCounts holds the Copilot seat totals for one scope. Totals only: it
@@ -671,6 +674,9 @@ func countSeats(scope, scopeID string, total int, seats []copilotSeat) *SeatCoun
 	return counts
 }
 
+// seatsPerPage is the seats page size; tests shrink it.
+var seatsPerPage = 100
+
 // fetchSeats pages through {base}/copilot/billing/seats and returns every seat
 // along with the API's total_seats.
 func (c *GitHubClient) fetchSeats(ctx context.Context, base string, client *http.Client) ([]copilotSeat, int, error) {
@@ -679,7 +685,7 @@ func (c *GitHubClient) fetchSeats(ctx context.Context, base string, client *http
 	page := 1
 
 	for {
-		url := fmt.Sprintf("%s/copilot/billing/seats?per_page=100&page=%d", base, page)
+		url := fmt.Sprintf("%s/copilot/billing/seats?per_page=%d&page=%d", base, seatsPerPage, page)
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 		if err != nil {
@@ -713,7 +719,9 @@ func (c *GitHubClient) fetchSeats(ctx context.Context, base string, client *http
 
 		slog.Debug("Fetched seats page", "page", page, "on_page", len(result.Seats), "total_so_far", len(seats), "total_seats", result.TotalSeats)
 
-		if len(result.Seats) == 0 || len(seats) >= result.TotalSeats {
+		// Stop on a short page, not on len(seats) >= total_seats: a seat can
+		// show up on two pages while the list shifts, which would end early.
+		if len(result.Seats) < seatsPerPage {
 			break
 		}
 		page++
