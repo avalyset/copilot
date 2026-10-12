@@ -13,12 +13,28 @@ import (
 
 const hostGHUnset = "unset GH_TOKEN GITHUB_TOKEN COPILOT_GITHUB_TOKEN GH_HOST GH_REPO; "
 const CopilotHostLoginCommand = "(" + hostGHUnset + "gh auth login --hostname github.com --web)"
+const HostGHStorageCheckCommand = "(" + hostGHUnset + "gh auth status --hostname github.com)"
 const HostGHRestartCommand = "(" + hostGHUnset + "nav-pilot)"
+
+// CleanHostGHEnv prevents inherited tokens and routing overrides from selecting
+// a different identity than the host login the user explicitly chose.
+func CleanHostGHEnv(env []string) []string {
+	clean := make([]string, 0, len(env))
+	for _, entry := range env {
+		key, _, _ := strings.Cut(entry, "=")
+		switch key {
+		case "GH_TOKEN", "GITHUB_TOKEN", "COPILOT_GITHUB_TOKEN", "GH_HOST", "GH_REPO":
+			continue
+		}
+		clean = append(clean, entry)
+	}
+	return clean
+}
 
 // ReportHostGHRecovery scopes environment cleanup to each host command so a
 // polluted shell cannot override the stored login at login or restart time.
 func ReportHostGHRecovery(w io.Writer) {
-	fmt.Fprintf(w, "In a host terminal, install gh if needed, then run:\n  %s\n  %s\nChoose the account you intend to use; this command changes gh's identity. Keep credentials in the OS keychain.\n", CopilotHostLoginCommand, HostGHRestartCommand)
+	fmt.Fprintf(w, "nav-pilot does not start login: gh can fall back to plaintext storage if its credential store fails. If you choose manual recovery, install gh in a system or Homebrew binary directory and run in a host terminal:\n  %s\n  %s\nBefore restart, require github.com to report (keyring). If it reports a config-file path, stop and fix credential-store access; do not restart on that plaintext fallback. This check reports storage metadata, not a guarantee of secure-only login. Then restart:\n  %s\nChoose the account you intend to use; this command changes gh's identity, not nav-pilot's own login or Copilot's native login.\n", CopilotHostLoginCommand, HostGHStorageCheckCommand, HostGHRestartCommand)
 }
 
 // ReportCopilotAuthRecovery never probes the Keychain or starts login. Native

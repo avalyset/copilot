@@ -65,7 +65,7 @@ func TestHostGHRecoveryCommandsClearAmbientIdentity(t *testing.T) {
 	}
 	var b bytes.Buffer
 	ReportHostGHRecovery(&b)
-	for _, command := range []string{CopilotHostLoginCommand, HostGHRestartCommand} {
+	for _, command := range []string{CopilotHostLoginCommand, HostGHStorageCheckCommand, HostGHRestartCommand} {
 		if !strings.Contains(b.String(), command) {
 			t.Fatalf("recovery omitted command: %s", &b)
 		}
@@ -74,7 +74,7 @@ func TestHostGHRecoveryCommandsClearAmbientIdentity(t *testing.T) {
 		}
 	}
 	got, err := os.ReadFile(out)
-	if err != nil || string(got) != "auth login --hostname github.com --web\n\n" {
+	if err != nil || string(got) != "auth login --hostname github.com --web\nauth status --hostname github.com\n\n" {
 		t.Fatalf("fake host commands = %q, %v", got, err)
 	}
 	if os.Getenv("GH_TOKEN") != "polluted" {

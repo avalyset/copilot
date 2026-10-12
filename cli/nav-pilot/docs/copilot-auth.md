@@ -59,6 +59,19 @@ for nav-pilot services; that token is not handed to the Copilot launcher.
 
 ## First login before the sandbox
 
+Setup, doctor, regular launches and staged launches never start login or OAuth.
+gh documents automatic plaintext fallback when its credential store fails;
+omitting `--insecure-storage` does not enforce secure-only storage. Automated
+login remains withheld until gh provides a documented, tested secure-only
+contract that fails before storing a token when the OS credential store fails.
+
+Setup and doctor share a trusted host gh status probe, with the five
+token/host/repo overrides below removed, a home-directory working directory and
+a five-second deadline. Project PATH entries and gh wrappers cannot select the
+probe binary. Nested cplt runs report unknown host status without probing.
+The probe reads status metadata only; it neither extracts tokens nor verifies
+Copilot entitlement, native login, or sandbox credential delivery.
+
 With no non-blank exported token or github.com user in gh's `hosts.yml`, a
 Copilot launch prints recovery advice before starting cplt. It does not run
 login or refuse the launch: native Copilot Keychain credentials may still work.
@@ -69,6 +82,15 @@ If Copilot needs login, leave the sandbox and run in a host terminal:
 
 ```sh
 (unset GH_TOKEN GITHUB_TOKEN COPILOT_GITHUB_TOKEN GH_HOST GH_REPO; gh auth login --hostname github.com --web)
+(unset GH_TOKEN GITHUB_TOKEN COPILOT_GITHUB_TOKEN GH_HOST GH_REPO; gh auth status --hostname github.com)
+```
+
+Before restarting, require github.com to report `(keyring)`. If gh reports a
+config-file path, stop and fix credential-store access. Do not restart using
+that plaintext fallback. The status check reports storage metadata, not a
+secure-only guarantee for the preceding login. Then restart:
+
+```sh
 (unset GH_TOKEN GITHUB_TOKEN COPILOT_GITHUB_TOKEN GH_HOST GH_REPO; nav-pilot)
 ```
 

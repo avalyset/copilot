@@ -384,9 +384,9 @@ type ghAuth int
 
 const (
 	ghAuthUnknown ghAuth = iota // gh ran but did not answer
-	ghAuthMissing               // no gh on PATH
+	ghAuthMissing               // no trusted host gh
 	ghAuthNone                  // not signed in, or the token no longer works
-	ghAuthOK                    // signed in, token in a file or the environment
+	ghAuthOK                    // signed in, storage not confirmed as keyring-only
 	ghAuthKeyring               // signed in, token in the system keyring
 )
 
@@ -395,23 +395,29 @@ const ghAuthTimeout = 5 * time.Second
 
 // ghAuthProbe runs `gh auth status`. Setup and doctor only, never a launch.
 // A var so tests need no gh.
-var ghAuthProbe = func() (ghAuth, string) {
-	gh, err := exec.LookPath("gh")
-	if err != nil {
-		return ghAuthMissing, ""
-	}
-	out, err := runBoundedTimeout(ghAuthTimeout, true, gh, "auth", "status", "--hostname", "github.com")
-	return ghAuthFrom(out, err)
-}
+var ghAuthProbe = probeHostGHAuth
 
 // ghAuthFrom reads `gh auth status`: exit 0 is signed in, exit 1 is not (or
 // a token GitHub rejects), anything else (a kill at the deadline) is unknown.
 func ghAuthFrom(out []byte, err error) (ghAuth, string) {
 	var ee *exec.ExitError
 	switch {
-	case err == nil && bytes.Contains(out, []byte("(keyring)")):
-		return ghAuthKeyring, ""
 	case err == nil:
+		// An inactive keyring account must not hide an active plaintext account.
+		// Only classify storage when every github.com account line names keyring.
+		keyring := false
+		for line := range strings.SplitSeq(string(out), "\n") {
+			if !strings.Contains(line, "Logged in to github.com account ") {
+				continue
+			}
+			if !strings.HasSuffix(strings.TrimSpace(line), "(keyring)") {
+				return ghAuthOK, ""
+			}
+			keyring = true
+		}
+		if keyring {
+			return ghAuthKeyring, ""
+		}
 		return ghAuthOK, ""
 	case errors.As(err, &ee) && ee.ExitCode() == 1:
 		return ghAuthNone, ""
@@ -425,7 +431,7 @@ func ghAuthFrom(out []byte, err error) (ghAuth, string) {
 func reportGHAuth(w io.Writer, indent, client string, st ghAuth, detail string) {
 	switch {
 	case st == ghAuthMissing:
-		fmt.Fprintf(w, "%s%s gh is not installed; the agent needs it to open PRs. Install it with %s\n", indent, yellow("⚠"),
+		fmt.Fprintf(w, "%s%s Trusted host gh is not installed; the agent needs it to open PRs. Install it with %s\n", indent, yellow("⚠"),
 			bold(domain.PkgForInstall().Pick("brew install gh", "sudo apt install gh")))
 	case st == ghAuthNone:
 		fmt.Fprintf(w, "%s%s gh is not signed in to github.com (or its token no longer works), so the agent cannot push or open PRs.\n", indent, yellow("⚠"))
@@ -435,7 +441,7 @@ func reportGHAuth(w io.Writer, indent, client string, st ghAuth, detail string) 
 	case st == ghAuthOK || st == ghAuthKeyring:
 		fmt.Fprintf(w, "%s%s gh is signed in to github.com.\n", indent, green("✓"))
 	default:
-		fmt.Fprintf(w, "%s%s Could not check the gh sign-in (%s). Run %s to see it.\n", indent, dim("-"), detail, bold("gh auth status"))
+		fmt.Fprintf(w, "%s%s Could not check the gh sign-in (%s). Run %s on the host to see it.\n", indent, dim("-"), detail, bold(providerpkg.HostGHStorageCheckCommand))
 	}
 	if st == ghAuthMissing || st == ghAuthNone {
 		providerpkg.ReportHostGHRecovery(w)
@@ -446,6 +452,9 @@ func reportGHAuth(w io.Writer, indent, client string, st ghAuth, detail string) 
 		providerpkg.ReportCopilotAuthRecovery(w, os.Environ(), "auto")
 	}
 	if st == ghAuthOK || st == ghAuthKeyring {
+		if st == ghAuthOK {
+			fmt.Fprintln(w, "gh did not confirm keyring-only storage for github.com accounts. For the Keychain target, check host gh auth status --hostname github.com and migrate any config-file login to the OS credential store before restart; nav-pilot has not verified secure storage.")
+		}
 		fmt.Fprintf(w, "Current cplt can hand host gh credentials to sandboxed gh through its exec-token cache when gh_guard.enabled is true and GH_TOKEN is not denied. If push or PR authentication fails, run cplt doctor and cplt config get gh_guard.enabled on the host. If cache support is missing, upgrade cplt: %s. gh must be installed in a directory cplt trusts.\n", domain.PkgForInstall().Pick("brew upgrade navikt/tap/cplt", "sudo apt upgrade cplt"))
 	}
 }
