@@ -1,11 +1,11 @@
 import { BodyShort, Box, Detail, HGrid, Label, Link } from "@navikt/ds-react";
 import { useId, type ReactNode } from "react";
-import { shownModels } from "@/components/cost-forecast";
+import { forecastLabel, shownModels } from "@/components/cost-forecast";
+import { backendRequest } from "@/lib/backend-api";
 import { getCostForecast } from "@/lib/cached-bigquery";
 import { formatDate, formatNumber, formatPercent, formatUSD } from "@/lib/format";
+import { monthName } from "@/lib/team-year";
 import type { CostForecast, CostForecastModel } from "@/lib/types";
-
-const label: Record<CostForecastModel["model"], string> = { trend: "Trend", per_user: "Per person" };
 
 const range = (r: CostForecastModel) =>
   `${formatUSD(r.net_mid_usd)} (${formatUSD(r.net_low_usd)}–${formatUSD(r.net_high_usd)})`;
@@ -30,28 +30,40 @@ function Card({ title, children }: { title: string; children: ReactNode }) {
 }
 
 /** F9: status cards at the top of the admin cost page. Amounts are internal: admin only, never logged. */
-export function CostStatusCardsView({ data: raw, anomalies }: { data: CostForecast; anomalies?: number }) {
+export function CostStatusCardsView({
+  data: raw,
+  anomalies,
+  grossToDate,
+}: {
+  data: CostForecast;
+  anomalies?: number;
+  /** Preliminary list-price usage this month, from the monthly overview. */
+  grossToDate?: number | null;
+}) {
   const data = { ...raw, models: shownModels(raw.models) };
   const used = data.net_to_date_usd;
   return (
     <>
       <h2 className="sr-only">Status for måneden</h2>
-      <HGrid columns={{ xs: 1, md: 2, lg: 4 }} gap="space-16">
-        <Card title="Forbruk hittil i måneden">
+      <HGrid columns={{ xs: 1, md: 2, lg: anomalies === undefined ? 4 : 5 }} gap="space-16">
+        <Card title={`Forbruk hittil i ${monthName(data.month)}`}>
           <BodyShort size="large" weight="semibold">
             {formatUSD(used)}
           </BodyShort>
-          <Detail textColor="subtle">Anslått netto ut fra brutto per dag.</Detail>
+          <Detail textColor="subtle">
+            Anslått fakturert beløp.
+            {grossToDate != null && ` Foreløpig forbruk til listepris: ${formatUSD(grossToDate)}.`}
+          </Detail>
         </Card>
-        <Card title="Prognose for måneden">
+        <Card title="Forventet faktura">
           {data.models.length ? (
             <>
               {data.models.map((m) => (
                 <BodyShort key={m.model}>
-                  {label[m.model]}: {range(m)}
+                  {forecastLabel[m.model]}: {range(m)}
                 </BodyShort>
               ))}
-              <Detail textColor="subtle">Netto ved månedsslutt. Intervallet dekker omtrent ni av ti utfall.</Detail>
+              <Detail textColor="subtle">Ved månedsslutt. Spennet dekker omtrent ni av ti utfall.</Detail>
             </>
           ) : (
             <BodyShort>For lite data ennå.</BodyShort>
@@ -67,7 +79,7 @@ export function CostStatusCardsView({ data: raw, anomalies }: { data: CostForeca
                 Brukt: {formatUSD(used)} ({formatPercent((used / data.budget_usd) * 100)})
               </BodyShort>
               {data.models.some((m) => m.over_budget) && (
-                <BodyShort weight="semibold">Advarsel: prognosen er over budsjettet.</BodyShort>
+                <BodyShort weight="semibold">Forventet faktura er over budsjettet.</BodyShort>
               )}
             </>
           ) : (
@@ -76,22 +88,22 @@ export function CostStatusCardsView({ data: raw, anomalies }: { data: CostForeca
             </BodyShort>
           )}
         </Card>
-        <Card title="Inkluderte kreditter">
+        <Card title="Kreditter i lisensene">
           <BodyShort>
             {data.allowance_used_up
-              ? "Brukt opp denne måneden."
+              ? `Brukt opp${data.allowance_run_out_date ? ` ${formatDate(data.allowance_run_out_date)}` : " denne måneden"}.`
               : data.allowance_run_out_date
-                ? `Inkluderte kreditter brukt opp ca. ${formatDate(data.allowance_run_out_date)}.`
+                ? `Blir brukt opp rundt ${formatDate(data.allowance_run_out_date)}.`
                 : "Ikke brukt opp ennå."}
           </BodyShort>
-          <Detail textColor="subtle">Kredittene i lisensene deles av alle i Nav.</Detail>
+          <Detail textColor="subtle">Kredittene deles av alle i Nav.</Detail>
         </Card>
         {anomalies !== undefined && (
-          <Card title="Aktive avvik">
+          <Card title="Varsler">
             <BodyShort size="large" weight="semibold">
               {formatNumber(anomalies)}
             </BodyShort>
-            <Link href="#avvik">Se listen over avvik</Link>
+            <Link href="#avvik">Se varslene</Link>
           </Card>
         )}
       </HGrid>
@@ -99,8 +111,11 @@ export function CostStatusCardsView({ data: raw, anomalies }: { data: CostForeca
   );
 }
 
-export async function CostStatusCards({ token }: { token: string }) {
+export async function CostStatusCards({ token, grossToDate }: { token: string; grossToDate?: number | null }) {
   // The forecast section below shows the error; do not log amounts here.
-  const data = await getCostForecast(token).catch(() => null);
-  return data && <CostStatusCardsView data={data} />;
+  const [data, anomalies] = await Promise.all([
+    getCostForecast(token).catch(() => null),
+    backendRequest<unknown[]>("/api/v1/copilot/billing/anomalies", token).catch(() => undefined),
+  ]);
+  return data && <CostStatusCardsView data={data} grossToDate={grossToDate} anomalies={anomalies?.length} />;
 }

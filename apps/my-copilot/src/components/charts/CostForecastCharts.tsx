@@ -1,10 +1,12 @@
 "use client";
 
-import { useId } from "react";
 import { Bar, Line } from "react-chartjs-2";
-import { BodyShort, HGrid, Heading, ReadMore, VStack } from "@navikt/ds-react";
+import { BodyShort, HGrid, Heading, VStack } from "@navikt/ds-react";
 import { Table, TableBody, TableDataCell, TableHeader, TableHeaderCell, TableRow } from "@navikt/ds-react/Table";
-import { bottomLegend, chartBoxClass, commonLineOptions, seriesColor } from "@/lib/chart-utils";
+import { bottomLegend, commonLineOptions, seriesColor } from "@/lib/chart-utils";
+import { costEvents, eventAnnotations, eventSummary } from "@/lib/cost-events";
+import { ChartFigure, NumbersFold, PlainTable } from "./chart-figure";
+import { eventMarkers, withEvents } from "./chart-events";
 import { formatUSD } from "@/lib/format";
 import { monthName } from "@/lib/team-year";
 import type { AdminMonth, CostForecast } from "@/lib/types";
@@ -131,29 +133,24 @@ function MonthChart({ data }: { data: CostForecast }) {
     ...(s.budget
       ? [{ label: "Budsjett i GitHub", data: s.labels.map(() => s.budget), ...line(4, { borderDash: [2, 2] }) }]
       : []),
-    ...(s.runOutDay
-      ? [
-          {
-            label: "Kredittene i lisensene brukt opp",
-            data: s.runOut,
-            ...line(3, { pointRadius: 6, pointStyle: "triangle", showLine: false }),
-          },
-        ]
-      : []),
   ];
+  const keys = (data.days ?? []).map((d) => d.day);
+  const markers = eventAnnotations(costEvents(data), keys);
+  const events = withEvents({ ...commonLineOptions, plugins: { ...commonLineOptions.plugins } }, keys, markers);
   const options = {
-    ...commonLineOptions,
+    ...events,
     spanGaps: false,
     plugins: {
-      ...commonLineOptions.plugins,
+      ...events.plugins,
       legend: {
         ...bottomLegend,
         labels: { ...bottomLegend.labels, filter: (item: { text: string }) => item.text !== "" },
       },
       tooltip: {
-        ...commonLineOptions.plugins.tooltip,
+        ...events.plugins.tooltip,
         filter: (item: { dataset: { label?: string }; raw: unknown }) => !!item.dataset.label && item.raw != null,
         callbacks: {
+          ...events.plugins.tooltip.callbacks,
           label: (ctx: { dataset: { label?: string }; parsed: { y: number }; dataIndex: number }) =>
             ctx.dataset.label?.startsWith("Spenn")
               ? ` ${ctx.dataset.label}: ${formatUSD(ctx.parsed.y)}–${formatUSD(s.high[ctx.dataIndex] ?? 0)}`
@@ -163,21 +160,36 @@ function MonthChart({ data }: { data: CostForecast }) {
     },
     scales: {
       ...commonLineOptions.scales,
-      y: { ...commonLineOptions.scales.y, ticks: usdTicks },
+      // Headroom keeps the budget line clear of the event markers above the plot.
+      y: {
+        ...commonLineOptions.scales.y,
+        ticks: usdTicks,
+        grace: "12%",
+        suggestedMax: s.budget ? s.budget * 1.15 : undefined,
+      },
       x: { ...commonLineOptions.scales.x, ticks: { ...commonLineOptions.scales.x.ticks, maxTicksLimit: 8 } },
     },
   };
   return (
-    <ChartFigure title="Denne måneden" summary={summary}>
-      <Line
-        data={{ labels: s.labels, datasets } as Parameters<typeof Line>[0]["data"]}
-        options={options as Parameters<typeof Line>[0]["options"]}
-      />
-      <DataTable
-        head={["Dag", "Fakturert"]}
-        rows={(data.days ?? []).map((d) => [dayLabel(d.day) + (d.forecast ? " (prognose)" : ""), formatUSD(d.net_usd)])}
-      />
-    </ChartFigure>
+    <ChartFigure
+      title="Er vi på vei over budsjettet?"
+      summary={
+        summary +
+        eventSummary(
+          eventAnnotations(
+            costEvents(data).filter((e) => !e.runOut),
+            keys
+          )
+        )
+      }
+      chart={
+        <Line
+          data={{ labels: s.labels, datasets } as Parameters<typeof Line>[0]["data"]}
+          options={options as Parameters<typeof Line>[0]["options"]}
+          plugins={[eventMarkers<"line">(keys, markers)]}
+        />
+      }
+    />
   );
 }
 
@@ -223,17 +235,20 @@ function YearChart({ months, data }: { months: AdminMonth[]; data: CostForecast 
         ]
       : []),
   ];
+  const keys = s.months.map((m) => m.month);
+  const markers = eventAnnotations(costEvents(data), keys);
+  const events = withEvents({ ...commonLineOptions, plugins: { ...commonLineOptions.plugins } }, keys, markers);
   const options = {
-    ...commonLineOptions,
+    ...events,
     // Bars from different datasets share the slot of their month: only one is set per month.
     datasets: { bar: { skipNull: true, grouped: true } },
     plugins: {
-      ...commonLineOptions.plugins,
-      legend: bottomLegend,
+      ...events.plugins,
       tooltip: {
-        ...commonLineOptions.plugins.tooltip,
+        ...events.plugins.tooltip,
         filter: (item: { raw: unknown }) => item.raw != null,
         callbacks: {
+          ...events.plugins.tooltip.callbacks,
           label: (ctx: { dataset: { label?: string }; raw: unknown; parsed: { y: number } }) =>
             Array.isArray(ctx.raw)
               ? ` ${ctx.dataset.label}: ${formatUSD(ctx.raw[0])}–${formatUSD(ctx.raw[1])}`
@@ -244,81 +259,98 @@ function YearChart({ months, data }: { months: AdminMonth[]; data: CostForecast 
     scales: { ...commonLineOptions.scales, y: { ...commonLineOptions.scales.y, ticks: usdTicks } },
   };
   return (
-    <ChartFigure title="Hittil i år" summary={summary}>
-      <Bar
-        data={{ labels: s.labels, datasets } as Parameters<typeof Bar>[0]["data"]}
-        options={options as Parameters<typeof Bar>[0]["options"]}
-      />
-      <DataTable
-        head={["Måned", "Fakturert"]}
-        rows={s.months.map((m, i) =>
-          s.range[i]
-            ? [`${monthName(m.month)} (foreløpig)`, `${formatUSD(s.range[i]![0])}–${formatUSD(s.range[i]![1])}`]
-            : [
-                monthName(m.month) + (m.basis === "premium" ? " (premiumforespørsler)" : ""),
-                m.enterprise_net_usd != null ? formatUSD(m.enterprise_net_usd) : "Ikke fakturert ennå",
-              ]
-        )}
-      />
-    </ChartFigure>
+    <ChartFigure
+      title="Hvor mye har vi betalt i år?"
+      summary={summary + eventSummary(markers)}
+      chart={
+        <Bar
+          data={{ labels: s.labels, datasets } as Parameters<typeof Bar>[0]["data"]}
+          options={options as Parameters<typeof Bar>[0]["options"]}
+          plugins={[eventMarkers<"bar">(keys, markers)]}
+        />
+      }
+    />
   );
 }
 
-function ChartFigure({ title, summary, children }: { title: string; summary: string; children: React.ReactNode[] }) {
-  const [chart, table] = children;
-  const id = useId();
+/** Per day this month, latest first: forecast rows are subtle and carry the range. */
+function DayTable({ data }: { data: CostForecast }) {
+  const s = monthSeries(data);
+  const days = (data.days ?? []).map((d, i) => ({ ...d, low: s.low[i], high: s.high[i] })).reverse();
   return (
-    <figure className="min-w-0 break-inside-avoid" style={{ margin: 0 }}>
-      <VStack gap="space-8">
-        <Heading level="3" size="xsmall">
-          {title}
-        </Heading>
-        <div className={chartBoxClass} role="img" aria-labelledby={id}>
-          {chart}
-        </div>
-        <figcaption id={id}>
-          <BodyShort size="small" textColor="subtle">
-            {summary}
-          </BodyShort>
-        </figcaption>
-        <div className="print:hidden">{table}</div>
-      </VStack>
-    </figure>
-  );
-}
-
-function DataTable({ head, rows }: { head: string[]; rows: string[][] }) {
-  return (
-    <ReadMore header="Vis tallene" size="small">
-      <Table size="small">
-        <TableHeader>
-          <TableRow>
-            {head.map((h, i) => (
-              <TableHeaderCell key={h} scope="col" align={i ? "right" : "left"}>
-                {h}
+    <VStack gap="space-4">
+      <Heading level="4" size="xsmall">
+        Denne måneden, siste dag først
+      </Heading>
+      <BodyShort size="small" textColor="subtle">
+        Grå rader er prognose.
+      </BodyShort>
+      <div className="max-h-96 overflow-y-auto">
+        <Table size="small">
+          <TableHeader className="sticky top-0 bg-(--ax-bg-default)">
+            <TableRow>
+              <TableHeaderCell scope="col">Dag</TableHeaderCell>
+              <TableHeaderCell scope="col" align="right">
+                Fakturert
               </TableHeaderCell>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map(([a, b]) => (
-            <TableRow key={a}>
-              <TableDataCell>{a}</TableDataCell>
-              <TableDataCell align="right">{b}</TableDataCell>
+              <TableHeaderCell scope="col" align="right">
+                Lav
+              </TableHeaderCell>
+              <TableHeaderCell scope="col" align="right">
+                Høy
+              </TableHeaderCell>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </ReadMore>
+          </TableHeader>
+          <TableBody>
+            {days.map((d) => (
+              <TableRow key={d.day} className={d.forecast ? "text-text-subtle italic" : undefined}>
+                <TableHeaderCell scope="row" className="whitespace-nowrap font-normal">
+                  {dayLabel(d.day)}
+                </TableHeaderCell>
+                <TableDataCell align="right">{formatUSD(d.net_usd)}</TableDataCell>
+                <TableDataCell align="right">{d.forecast && d.low != null ? formatUSD(d.low) : ""}</TableDataCell>
+                <TableDataCell align="right">{d.forecast && d.high != null ? formatUSD(d.high) : ""}</TableDataCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </VStack>
   );
 }
 
-/** «Denne måneden» and «Hittil i år», side by side on wide screens. Only the trend model is drawn. */
+/** «Denne måneden» and «Hittil i år», side by side on wide screens, with one full-width «Vis tallene» under both. */
 export function CostForecastCharts({ data, months }: { data: CostForecast; months: AdminMonth[] }) {
+  const s = yearSeries(months, data);
   return (
-    <HGrid columns={{ xs: 1, md: 2 }} gap="space-24" className="print:grid-cols-2">
-      <MonthChart data={data} />
-      <YearChart months={months} data={data} />
-    </HGrid>
+    <VStack gap="space-8">
+      <HGrid columns={{ xs: 1, md: 2 }} gap="space-24" className="print:grid-cols-2">
+        <MonthChart data={data} />
+        <YearChart months={months} data={data} />
+      </HGrid>
+      <NumbersFold>
+        <HGrid columns={{ xs: 1, md: 2 }} gap="space-24">
+          <DayTable data={data} />
+          <VStack gap="space-4">
+            <Heading level="4" size="xsmall">
+              Hittil i år
+            </Heading>
+            <PlainTable
+              rows={[
+                ["Måned", "Fakturert"],
+                ...s.months.map((m, i) =>
+                  s.range[i]
+                    ? [`${monthName(m.month)} (foreløpig)`, `${formatUSD(s.range[i]![0])}–${formatUSD(s.range[i]![1])}`]
+                    : [
+                        monthName(m.month) + (m.basis === "premium" ? " (premiumforespørsler)" : ""),
+                        m.enterprise_net_usd != null ? formatUSD(m.enterprise_net_usd) : "Ikke fakturert ennå",
+                      ]
+                ),
+              ]}
+            />
+          </VStack>
+        </HGrid>
+      </NumbersFold>
+    </VStack>
   );
 }

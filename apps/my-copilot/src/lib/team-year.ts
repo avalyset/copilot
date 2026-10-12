@@ -3,9 +3,9 @@ import type { TeamYearMonth, TeamYearOverview } from "./types";
 
 /** A gross month is always preliminary: it is replaced by net once the invoice is read in. */
 const basisLabel: Record<TeamYearMonth["basis"], string> = {
-  net: "Netto",
+  net: "Fakturert",
   premium: "Premiumforespørsler",
-  gross: "Brutto (foreløpig)",
+  gross: "Foreløpig forbruk",
   none: "Ingen data",
 };
 
@@ -13,10 +13,10 @@ const basisLabel: Record<TeamYearMonth["basis"], string> = {
 export function teamYearCaveats(data: TeamYearOverview): string[] {
   const { membership_from, gross_from, last_usage_day } = data.coverage;
   return [
-    "Totalraden er summen av de fakturerte månedene. Brutto er foreløpig og er ikke med i totalen.",
+    "Totalraden er summen av de fakturerte månedene. Foreløpig forbruk er ikke med.",
     "Beløp for ulike team kan ikke legges sammen: en person som er med i flere team, telles i hvert av dem.",
-    "Netto er fakturert forbruk etter fradrag, fordelt på dagene hver person brukte Copilot. Brutto er listepris før fradrag, og brukes inntil fakturaen for måneden er lest inn.",
-    "Januar til mai 2026 ble fakturert som premiumforespørsler. For disse månedene har vi ikke forbruk per dag. Netto er derfor fordelt likt på dagene hver person brukte Copilot, og brutto mangler.",
+    "Fakturert er beløpet Nav betaler etter rabatt, fordelt på dagene hver person brukte Copilot. Foreløpig forbruk er forbruket til listepris for måneden som pågår. Det byttes ut med fakturert beløp når fakturaen kommer, rundt den 3. i måneden etter.",
+    "Januar til mai 2026 ble fakturert som premiumforespørsler, ikke KI-kreditter. For disse månedene har vi ikke forbruk per dag. Det fakturerte beløpet er derfor fordelt likt på dagene hver person brukte Copilot, og foreløpig forbruk mangler.",
     ...residualCaveats(data),
     `Teamhistorikken starter ${membership_from || "ukjent dato"}. For dager før det regner vi hver person med i de teamene personen var med i den første dagen vi har registrert.`,
     ...(data.months.some((m) => m.basis === "none")
@@ -24,7 +24,7 @@ export function teamYearCaveats(data: TeamYearOverview): string[] {
           `Ingen data betyr at måneden mangler teamhistorikk (finnes fra ${membership_from || "ukjent dato"}) eller forbruk per person (finnes fra ${gross_from || "ukjent dato"}), eller at fakturaen for måneden ikke er lest inn ennå.`,
         ]
       : []),
-    "Netto uten bruk er fakturert beløp for medlemmer uten registrert bruk i måneden. Beløpet kan ikke fordeles på dager og er derfor ikke med i netto.",
+    "Fakturert uten bruk er fakturert beløp for medlemmer uten registrert bruk i måneden. Beløpet kan ikke fordeles på dager og er derfor ikke med i fakturert.",
     ...licenceCaveats(data),
     `Tallene går til og med ${last_usage_day || "ukjent dato"}.`,
   ];
@@ -40,7 +40,7 @@ function residualCaveats(data: TeamYearOverview): string[] {
     );
   return months.length
     ? [
-        `Andel av Navs nettoforbruk som ikke kunne knyttes til en person, og som derfor ikke er med i tallene for noe team: ${months.join(", ")}.`,
+        `Ikke fordelt: andelen av Navs fakturerte beløp som ikke kunne knyttes til en person, og som derfor ikke er med i tallene for noe team. ${months.join(", ")}.`,
       ]
     : [];
 }
@@ -48,12 +48,12 @@ function residualCaveats(data: TeamYearOverview): string[] {
 function licenceCaveats(data: TeamYearOverview): string[] {
   const { seats_snapshot, team_members_from } = data.coverage;
   if (!seats_snapshot || !team_members_from) {
-    return ["Lisenser er ikke lest inn ennå. De vises etter første nattlige innlesing."];
+    return ["Lisensene er ikke lest inn ennå. De vises etter første nattlige innlesing."];
   }
   return [
-    "Lisenser er et anslag. Vi regner listepris per måned, 19 USD for Business og 39 USD for Enterprise, for hvert medlem av teamet med lisens, fra måneden lisensen ble tildelt. Hadde noen lisens før det, er den perioden ikke med.",
+    "Lisenskostnad er et anslag: antall lisenser ganger listepris, uten rabatt. Listeprisen er 19 USD for Business og 39 USD for Enterprise per måned, for hvert medlem av teamet med lisens, fra måneden lisensen ble tildelt. Hadde noen lisens før det, er den perioden ikke med.",
     `Medlemslister finnes fra ${team_members_from}. For månedene før bruker vi medlemmene teamet hadde den dagen.`,
-    "Totalt med lisenser legger lisensene til netto og netto uten bruk, eller til brutto når måneden bruker brutto. Feltet er tomt når en av delene mangler.",
+    "Totalt inkl. lisenser legger lisenskostnaden til fakturert og fakturert uten bruk, eller til foreløpig forbruk når måneden ikke er fakturert ennå. Feltet er tomt når en av delene mangler.",
   ];
 }
 
@@ -85,7 +85,8 @@ export function teamYearCsv(data: TeamYearOverview): string {
   const lines = [
     `# Copilot-forbruk i USD for team ${data.team_slug} (${data.team_id}), ${data.year}`,
     ...teamYearCaveats(data).map((caveat) => `# ${caveat}`),
-    "måned,grunnlag,medlemmer_med_forbruk,netto_usd,brutto_usd,netto_uten_bruk_usd,medlemmer_med_lisens,lisenser_usd_anslag,totalt_med_lisenser_usd",
+    "# Nye kolonnenavn fra oktober 2026: netto_usd heter fakturert_usd, brutto_usd heter foreløpig_forbruk_usd, netto_uten_bruk_usd heter fakturert_uten_bruk_usd, lisenser_usd_anslag heter lisenskostnad_usd_anslag og totalt_med_lisenser_usd heter totalt_inkl_lisenser_usd. I grunnlag heter Netto nå Fakturert og Brutto (foreløpig) nå Foreløpig forbruk.",
+    "måned,grunnlag,medlemmer_med_forbruk,fakturert_usd,foreløpig_forbruk_usd,fakturert_uten_bruk_usd,medlemmer_med_lisens,lisenskostnad_usd_anslag,totalt_inkl_lisenser_usd",
     ...teamYearRows(data).map((row) => row.join(",")),
   ];
   return lines.join("\n") + "\n";
@@ -112,5 +113,5 @@ function teamYearTotalRow(data: TeamYearOverview): string[] {
   ];
 }
 
-/** The report hides «netto uten bruk» when no month has an amount; the CSV keeps every column. */
+/** The report hides «fakturert uten bruk» when no month has an amount; the CSV keeps every column. */
 export const hasNoUsageAmounts = (rows: string[][]) => rows.some((r) => Number(r[5]) !== 0);
