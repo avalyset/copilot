@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -64,7 +65,7 @@ func TestHostGHRecoveryCommandsClearAmbientIdentity(t *testing.T) {
 		t.Setenv(name, "polluted")
 	}
 	var b bytes.Buffer
-	ReportHostGHRecovery(&b)
+	ReportHostGHRecovery(&b, "auto")
 	for _, command := range []string{CopilotHostLoginCommand, HostGHStorageCheckCommand, HostGHRestartCommand} {
 		if !strings.Contains(b.String(), command) {
 			t.Fatalf("recovery omitted command: %s", &b)
@@ -79,6 +80,93 @@ func TestHostGHRecoveryCommandsClearAmbientIdentity(t *testing.T) {
 	}
 	if os.Getenv("GH_TOKEN") != "polluted" {
 		t.Fatal("subshell cleanup must not modify the parent")
+	}
+}
+
+func TestHostGHRecoveryEnvOnlyRequiresExplicitModeChange(t *testing.T) {
+	isolateHome(t)
+	dir := t.TempDir()
+	t.Setenv("PATH", dir)
+	t.Setenv("AUTH_TEST_MODE", filepath.Join(dir, "mode"))
+	t.Setenv("GH_TOKEN", "ambient")
+	script := `#!/bin/sh
+if [ "$*" = 'config set copilot_auth_mode auto' ]; then
+  printf auto > "$AUTH_TEST_MODE"
+  exit 0
+fi
+for name in GH_TOKEN GITHUB_TOKEN COPILOT_GITHUB_TOKEN GH_HOST GH_REPO; do
+  eval 'present=${'"$name"'+yes}'
+  [ -z "$present" ] || exit 9
+done
+[ -f "$AUTH_TEST_MODE" ] || exit 8
+`
+	if err := testhome.WriteExec(filepath.Join(dir, "nav-pilot"), script); err != nil {
+		t.Fatal(err)
+	}
+	if err := exec.Command("/bin/sh", "-c", HostGHRestartCommand).Run(); err == nil {
+		t.Fatal("token-free restart must fail while env_only is configured")
+	}
+	var b bytes.Buffer
+	ReportHostGHRecovery(&b, "env_only")
+	change := "nav-pilot config set copilot_auth_mode auto"
+	if strings.Index(b.String(), change) < strings.Index(b.String(), HostGHStorageCheckCommand) || strings.Index(b.String(), change) > strings.Index(b.String(), HostGHRestartCommand) {
+		t.Fatalf("explicit mode choice must follow storage check and precede restart: %s", &b)
+	}
+	if _, err := os.Stat(os.Getenv("AUTH_TEST_MODE")); !os.IsNotExist(err) {
+		t.Fatal("printing recovery must not change config")
+	}
+	for _, command := range []string{change, HostGHRestartCommand} {
+		if got, err := exec.Command("/bin/sh", "-c", command).CombinedOutput(); err != nil {
+			t.Fatalf("printed recovery failed: %v, %s", err, got)
+		}
+	}
+	if os.Getenv("GH_TOKEN") != "ambient" {
+		t.Fatal("recovery must preserve the parent token")
+	}
+}
+
+func TestSiteHostAuthCommandsClearAmbientIdentity(t *testing.T) {
+	isolateHome(t)
+	dir := t.TempDir()
+	script := "#!/bin/sh\n[ \"$*\" = 'remote -v' ] && exit 0\nfor name in GH_TOKEN GITHUB_TOKEN COPILOT_GITHUB_TOKEN GH_HOST GH_REPO; do\n eval 'present=${'\"$name\"'+yes}'\n [ -z \"$present\" ] || exit 9\ndone\n"
+	for _, binary := range []string{"gh", "cplt", "nav-pilot", "git"} {
+		if err := testhome.WriteExec(filepath.Join(dir, binary), script); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Setenv("PATH", dir)
+	for _, name := range []string{"GH_TOKEN", "GITHUB_TOKEN", "COPILOT_GITHUB_TOKEN", "GH_HOST", "GH_REPO"} {
+		t.Setenv(name, "polluted")
+	}
+	blocks := regexp.MustCompile("(?s)\\{`([^`]*)`\\}")
+	root := "../../../../apps/my-copilot/src/app/(nb)/(nav-pilot)/nav-pilot/guider"
+	for _, page := range []string{"kom-i-gang", "cplt-feilmeldinger", "cplt-git"} {
+		t.Run(page, func(t *testing.T) {
+			source, err := os.ReadFile(filepath.Join(root, page, "page.tsx"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			checked := 0
+			for _, block := range blocks.FindAllStringSubmatch(string(source), -1) {
+				command := block[1]
+				if !strings.Contains(command, "gh auth") && !strings.Contains(command, "cplt doctor --agent") && !strings.Contains(command, "cplt --agent copilot") && !strings.Contains(command, "; nav-pilot)") && !strings.Contains(command, "/opt/homebrew/bin/copilot") {
+					continue
+				}
+				if strings.Contains(command, "token=\"") || strings.Contains(command, "git remote set-url") {
+					continue
+				}
+				// Execute only fake host tools, including the documented native path.
+				command = strings.ReplaceAll(command, "/opt/homebrew/bin/copilot", "nav-pilot")
+				command = strings.ReplaceAll(command, "cd ~/src/min-app\n", "")
+				if got, err := exec.Command("/bin/sh", "-e", "-c", command).CombinedOutput(); err != nil {
+					t.Fatalf("site command retained ambient identity: %s\n%v, %s", command, err, got)
+				}
+				checked++
+			}
+			if checked == 0 {
+				t.Fatal("no host auth commands checked")
+			}
+		})
 	}
 }
 

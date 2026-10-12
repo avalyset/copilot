@@ -69,7 +69,9 @@ Setup and doctor share a trusted host gh status probe, with the five
 token/host/repo overrides below removed, a home-directory working directory and
 a five-second deadline. Project PATH entries and gh wrappers cannot select the
 probe binary. Nested cplt runs report unknown host status without probing.
-The probe reads status metadata only; it neither extracts tokens nor verifies
+The probe checks stored host login separately from ambient-token authentication.
+A missing or rejected stored login does not prove push or PR authentication will
+fail. The probe reads status metadata only; it neither extracts tokens nor verifies
 Copilot entitlement, native login, or sandbox credential delivery.
 
 With no non-blank exported token or github.com user in gh's `hosts.yml`, a
@@ -88,7 +90,13 @@ If Copilot needs login, leave the sandbox and run in a host terminal:
 Before restarting, require github.com to report `(keyring)`. If gh reports a
 config-file path, stop and fix credential-store access. Do not restart using
 that plaintext fallback. The status check reports storage metadata, not a
-secure-only guarantee for the preceding login. Then restart:
+secure-only guarantee for the preceding login.
+
+If you configured `env_only`, the token-free restart below will be refused.
+To choose stored-login recovery, explicitly run
+`nav-pilot config set copilot_auth_mode auto` after checking storage and before
+restarting. Otherwise keep `env_only` and supply a Copilot token. Recovery advice
+never changes your configuration. Then restart for stored-login recovery:
 
 ```sh
 (unset GH_TOKEN GITHUB_TOKEN COPILOT_GITHUB_TOKEN GH_HOST GH_REPO; nav-pilot)

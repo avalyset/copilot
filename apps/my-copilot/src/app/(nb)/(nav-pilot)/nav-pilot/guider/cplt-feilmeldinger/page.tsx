@@ -612,7 +612,7 @@ gh pr create --head min-branch`}
           </BodyLong>
           <CodeBlock compact>
             {`git remote set-url origin https://github.com/navikt/<repo>.git
-gh auth setup-git`}
+(unset GH_TOKEN GITHUB_TOKEN COPILOT_GITHUB_TOKEN GH_HOST GH_REPO; gh auth setup-git --hostname github.com)`}
           </CodeBlock>
 
           <LinkableHeading id="go-vcs" size="small" level="3">
@@ -664,7 +664,8 @@ gh auth login --hostname github.com &&
             i nettleseren selv og bruke koden der. Dette gjelder bare når du har valgt enhetsflyten og fått en kode,
             ikke enhver lenke fra <code className={code}>/login</code>. Ikke del koden i Slack. På Mac skal{" "}
             <code className={code}>gh auth status</code> vise nøkkelringen som tokenlager. Viser den en fil i stedet, må
-            lagringsfeilen løses før du bruker dette som fast oppsett.
+            lagringsfeilen løses før du starter agenten igjen. Ikke fortsett med klartekstlagring. Statussjekken viser
+            lagringsmetadata, ikke en garanti for at gh bare brukte sikker lagring under innloggingen.
           </BodyLong>
           <BodyLong>
             Kontroller at brukernavnet fra gh er kontoen som har Nav-lisensen. Åpne{" "}
@@ -672,7 +673,11 @@ gh auth login --hostname github.com &&
               Copilot-innstillingene
             </a>{" "}
             med samme konto og sjekk at den har Copilot Business fra navikt. Når innloggingen og tilgangen er i orden,
-            start nav-pilot på nytt fra repoet ditt:
+            start nav-pilot på nytt fra repoet ditt. Har du satt{" "}
+            <code className={code}>copilot_auth_mode=env_only</code>, avviser nav-pilot oppstart uten eksportert token.
+            Vil du bruke lagret innlogging, kjør først{" "}
+            <code className={code}>nav-pilot config set copilot_auth_mode auto</code>. Ellers beholder du{" "}
+            <code className={code}>env_only</code> og gir klienten et Copilot-token i stedet for oppstarten under:
           </BodyLong>
           <CodeBlock compact>{`(
 unset COPILOT_GITHUB_TOKEN GH_TOKEN GITHUB_TOKEN GH_HOST GH_REPO
@@ -718,11 +723,18 @@ cplt doctor --agent copilot
             fjerner også <code className={code}>GH_REPO</code>, som ellers kan styre gh mot et annet repo.
           </BodyLong>
           <BodyLong>
-            Er feil gh-konto aktiv, bytt til en konto som allerede er innlogget med{" "}
-            <code className={code}>gh auth switch --hostname github.com --user DITT_BRUKERNAVN</code>, eller logg inn på
-            riktig konto med <code className={code}>gh auth login --hostname github.com</code>. Kjør kommandoene utenfor
-            cplt, og kontroller kontoen igjen. Byttet gjelder gh og git, ikke Copilots egen lagrede innlogging eller{" "}
-            <code className={code}>nav-pilot auth login</code>.
+            Er feil gh-konto aktiv, bytt til en konto som allerede er innlogget. Kjør dette utenfor cplt:
+          </BodyLong>
+          <CodeBlock
+            compact
+          >{`(unset GH_TOKEN GITHUB_TOKEN COPILOT_GITHUB_TOKEN GH_HOST GH_REPO; gh auth switch --hostname github.com --user DITT_BRUKERNAVN)`}</CodeBlock>
+          <BodyLong>
+            Trenger du en ny innlogging, følg oppskriften under{" "}
+            <NextLink href="#login-nettleser" className={linkClass}>
+              /login åpner ikke nettleseren
+            </NextLink>
+            . Kontroller kontoen og tokenlageret igjen med underskallet over. Byttet gjelder gh og git, ikke Copilots
+            egen lagrede innlogging eller <code className={code}>nav-pilot auth login</code>.
           </BodyLong>
           <BodyLong>Prøv først en vanlig forespørsel uten nav-pilot og uten å kjøre /login:</BodyLong>
           <CodeBlock compact>{`(
@@ -731,19 +743,29 @@ cplt --agent copilot -- -p "Reply with OK only"
 cplt --agent copilot
 )`}</CodeBlock>
           <Bullets>
-            <li>Virker begge, prøv nav-pilot igjen og noter kommandoen hvis den feiler.</li>
+            <li>
+              Virker begge, bruk den rensede nav-pilot-oppstarten over og noter kommandoen hvis den feiler. Har du valgt
+              env_only, behold et Copilot-token eller velg auto uttrykkelig først.
+            </li>
             <li>Virker bare den første, noter hva Copilot spør om ved interaktiv oppstart.</li>
             <li>
-              Feiler begge, noter feilen før meldingen om nøkkelringen. Virker ikke gh-innloggingen, kjør{" "}
-              <code className={code}>gh auth login --hostname github.com</code> utenfor cplt og prøv igjen.
+              Feiler begge, noter feilen før meldingen om nøkkelringen. Virker ikke gh-innloggingen, følg den rensede
+              innloggingsoppskriften under{" "}
+              <NextLink href="#login-nettleser" className={linkClass}>
+                /login åpner ikke nettleseren
+              </NextLink>
+              .
             </li>
           </Bullets>
           <BodyLong>
-            Sammenlign deretter med Copilot utenfor sandkassen. Finn den selvstendige Copilot-binæren med{" "}
-            <code className={code}>cplt doctor --agent copilot --verbose</code>. Bruk hele stien, ikke bare{" "}
-            <code className={code}>copilot</code>, siden et alias eller en PATH-shim kan starte cplt igjen. Er stien for
-            eksempel <code className={code}>/opt/homebrew/bin/copilot</code>, kan du teste samme gh-token slik:
+            Sammenlign deretter med Copilot utenfor sandkassen. Finn den selvstendige Copilot-binæren med kommandoen
+            under. Bruk hele stien, ikke bare <code className={code}>copilot</code>, siden et alias eller en PATH-shim
+            kan starte cplt igjen. Er stien for eksempel <code className={code}>/opt/homebrew/bin/copilot</code>, kan du
+            teste samme gh-token slik:
           </BodyLong>
+          <CodeBlock
+            compact
+          >{`(unset GH_TOKEN GITHUB_TOKEN COPILOT_GITHUB_TOKEN GH_HOST GH_REPO; cplt doctor --agent copilot --verbose)`}</CodeBlock>
           <CodeBlock compact>{`(
 unset COPILOT_GITHUB_TOKEN GH_TOKEN GITHUB_TOKEN GH_HOST GH_REPO
 token="$(gh auth token --hostname github.com)" &&
@@ -756,32 +778,51 @@ token="$(gh auth token --hostname github.com)" &&
           </BodyLong>
           <BodyLong>
             Trenger du Copilots egen innlogging, kjør den selvstendige binæren utenfor cplt og velg enhetskode hvis
-            klienten tilbyr det. Bekreft at tokenet lagres i nøkkelringen. cplt henter foreløpig gh-tokenet, ikke
-            Copilots eget token. Vil du bruke Copilots lagrede innlogging på Mac, kan du slå av erstatningen:
+            klienten tilbyr det. Bytt ut eksempelstien under med stien doctor viste. Bekreft at tokenet lagres i
+            nøkkelringen. cplt henter foreløpig gh-tokenet, ikke Copilots eget token:
           </BodyLong>
+          <CodeBlock
+            compact
+          >{`(unset GH_TOKEN GITHUB_TOKEN COPILOT_GITHUB_TOKEN GH_HOST GH_REPO; /opt/homebrew/bin/copilot)`}</CodeBlock>
+          <BodyLong>Vil du bruke Copilots lagrede innlogging på Mac, kan du slå av erstatningen:</BodyLong>
           <CodeBlock compact>{`cplt config set sandbox.keychain_substitute false`}</CodeBlock>
           <BodyLong>
             Dette gir Copilot bred lese- og skrivetilgang til nøkkelringen, ikke bare sitt eget token. Fjern uønskede
             eksporterte <code className={code}>COPILOT_GITHUB_TOKEN</code>, <code className={code}>GH_TOKEN</code> og{" "}
-            <code className={code}>GITHUB_TOKEN</code> fra startmiljøet, og start økten på nytt. Å slå av erstatningen
-            fjerner ikke disse variablene. Har du satt <code className={code}>gh_guard.inject_token</code>, må den også
-            slås av for å teste Copilots egen innlogging. Gå tilbake til standardinnstillingen med:
+            <code className={code}>GITHUB_TOKEN</code> fra startmiljøet med den rensede oppstarten over. Å slå av
+            erstatningen fjerner ikke disse variablene. Har du satt <code className={code}>gh_guard.inject_token</code>,
+            noter verdien og slå også den av før testen med{" "}
+            <code className={code}>cplt config set gh_guard.inject_token false</code>. Har du valgt{" "}
+            <code className={code}>copilot_auth_mode=env_only</code>, avviser nav-pilot den oppstarten. Bare hvis du vil
+            teste lagret innlogging, noter den gamle modusen og velg uttrykkelig:
+          </BodyLong>
+          <CodeBlock compact>{`nav-pilot config set copilot_auth_mode auto`}</CodeBlock>
+          <BodyLong>
+            Start deretter med den rensede nav-pilot-kommandoen over. Vil du beholde{" "}
+            <code className={code}>env_only</code>, må du gi klienten et Copilot-token i stedet; da tester du ikke
+            lagret innlogging alene. Etter testen gjenoppretter du modusen du hadde. Var den{" "}
+            <code className={code}>env_only</code>, kjør{" "}
+            <code className={code}>nav-pilot config set copilot_auth_mode env_only</code> og gi klienten token igjen.
+            nav-pilot endrer ikke modusen for deg. Gjenopprett også den tidligere verdien av{" "}
+            <code className={code}>gh_guard.inject_token</code> hvis du endret den. Gå tilbake til standardinnstillingen
+            for nøkkelringerstatning med:
           </BodyLong>
           <CodeBlock compact>{`cplt config set sandbox.keychain_substitute --unset`}</CodeBlock>
+          <BodyLong>Gjelder tokenfeilen gh, kan du fornye tilgangen utenfor cplt:</BodyLong>
+          <CodeBlock
+            compact
+          >{`(unset GH_TOKEN GITHUB_TOKEN COPILOT_GITHUB_TOKEN GH_HOST GH_REPO; gh auth refresh --hostname github.com)`}</CodeBlock>
           <BodyLong>
-            Gjelder tokenfeilen gh, kan <code className={code}>gh auth refresh --hostname github.com</code> fornye
-            tilgangen. Logg inn igjen hvis GitHub avviser tokenet. En ny cplt-økt henter tokenet på nytt; en økt som
-            allerede kjører, har fortsatt tokenet den fikk ved oppstart. Ikke bruk lagring i klartekst som løsning på en
-            feil i sandkassen.
+            Kontroller kontoen og tokenlageret igjen med underskallet over. Følg den rensede innloggingsoppskriften hvis
+            GitHub avviser tokenet. En ny cplt-økt henter tokenet på nytt; en økt som allerede kjører, har fortsatt
+            tokenet den fikk ved oppstart. Ikke bruk lagring i klartekst som løsning på en feil i sandkassen.
           </BodyLong>
           <BodyLong>
             På Linux og i WSL når agenten ikke nøkkelringen over D-Bus, fordi cplt stenger denne forbindelsen. For
-            Copilot CLI logger du inn på maskinen og lar cplt sende gh-tokenet inn:
+            Copilot CLI logger du inn på maskinen med den rensede innloggingsoppskriften over. Kontroller kontoen og
+            sikker lagring før du lar cplt sende gh-tokenet inn:
           </BodyLong>
-          <CodeBlock compact>
-            {`gh auth login --hostname github.com
-cplt config set gh_guard.inject_token true --force`}
-          </CodeBlock>
+          <CodeBlock compact>{`cplt config set gh_guard.inject_token true --force`}</CodeBlock>
           <BodyLong>
             Tokenet ligger da i miljøet til alle prosesser i sandkassen, og alle kan lese det. Derfor krever cplt{" "}
             <code className={code}>--force</code>. Oppsettet krever at gh-vakta er på. Endringen i{" "}

@@ -435,15 +435,18 @@ Den ukentlige kjøringen er av til repovariabelen `SUBAGENT_PIN_CANARY` er `true
 > `copilot --agent nav-pilot` uten cplt kjører uten sandbox.
 
 > **Auth-detalj (Copilot/cplt):** nav-pilot henter ikke ut GitHub-tokenet selv.
-> Med `cplt`s gh-guard på, som den er i `standard` og `strict`, skaffer `cplt` tokenet: den bruker `GH_TOKEN`,
-> `GITHUB_TOKEN` eller `COPILOT_GITHUB_TOKEN` hvis en av dem er satt, ellers
-> `gh auth token` utenfor sandkassen, og leverer det via en 0600-fil som leses
-> én gang. Med gh-guarden av gjør `cplt` ingenting her, og Copilot autentiserer
-> selv. `copilot_auth_mode` styrer hvilke kilder som slipper fram: `auto`
-> (standard) begrenser ingenting, `env_only` avbryter oppstart hvis tokenet ikke
-> allerede ligger i miljøet, og `gh_only` fjerner token-variablene fra
-> barnemiljøet. Dette er en konfigurasjonskontroll, ikke en sikkerhetsgrense.
-> Se [SECURITY.md](../SECURITY.md).
+> `copilot_auth_mode` filtrerer miljøet nav-pilot gir til cplt, ikke hvilken
+> konto eller kilde Copilot bruker. `auto` (standard) bevarer token-variablene,
+> `env_only` avbryter hvis ingen av `GH_TOKEN`, `GITHUB_TOKEN` eller
+> `COPILOT_GITHUB_TOKEN` har en verdi som ikke er blank, og `gh_only` fjerner
+> alle tre fra miljøet før cplt starter. Begge oppstartsløpene bruker filteret.
+> cplt kan nekte variablene gjennom `deny.env`, sende inn et host-gh-token eller
+> beholde tilgangen til Copilots lagrede innlogging. På macOS kan standardvalget
+> for nøkkelringerstatning sende inn et gh-token selv med gh-vakta av.
+> Gh-vaktas 0600-fil som leses én gang, er en separat kanal for tokenet.
+> Eksklusivt valg av autentiseringskilde støttes ikke. Se
+> [autentiseringskontrakten](../cli/nav-pilot/docs/copilot-auth.md) og
+> [SECURITY.md](../SECURITY.md).
 
 ### opencode: Nav-kontekst automatisk
 

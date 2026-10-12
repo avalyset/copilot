@@ -128,7 +128,7 @@ func TestReportGHAuth(t *testing.T) {
 	stubSSH(t, false)
 	out := func(client string, st ghAuth) string {
 		var b bytes.Buffer
-		reportGHAuth(&b, "", client, st, "timeout")
+		reportGHAuth(&b, "", client, "auto", st, "timeout")
 		return b.String()
 	}
 	if s := out("copilot", ghAuthNone); !strings.Contains(s, "gh auth login") || strings.Contains(s, "insecure") {
@@ -165,6 +165,32 @@ func TestReportGHAuth(t *testing.T) {
 	}
 }
 
+func TestReportGHAuthRecoveryPreservesConfiguredMode(t *testing.T) {
+	for _, mode := range []string{"auto", "env_only", "gh_only"} {
+		t.Run(mode, func(t *testing.T) {
+			isolatedConfig(t)
+			config := "version = 1\nclient = \"copilot\"\ncopilot_auth_mode = \"" + mode + "\"\n"
+			if err := os.WriteFile(configPath(), []byte(config), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			cfg, err := readConfig()
+			if err != nil {
+				t.Fatal(err)
+			}
+			r := resolve(cfg, CLIOverrides{})
+			var b bytes.Buffer
+			reportGHAuth(&b, "", r.Client, r.CopilotAuthMode, ghAuthNone, "")
+			if strings.Contains(b.String(), "env_only rejects a restart") != (mode == "env_only") {
+				t.Fatalf("mode-aware recovery: %s", &b)
+			}
+			got, err := os.ReadFile(configPath())
+			if err != nil || string(got) != config {
+				t.Fatalf("report changed config: %q, %v", got, err)
+			}
+		})
+	}
+}
+
 // The "(default" line is what tells an unset key from a set one.
 func TestProtectKeyWithoutDefaultMarkerIsExplicit(t *testing.T) {
 	isolatedConfig(t)
@@ -187,7 +213,7 @@ func stubSSH(t *testing.T, ssh bool) {
 func TestReportGHAuthSSHOrigin(t *testing.T) {
 	stubSSH(t, true)
 	var b bytes.Buffer
-	reportGHAuth(&b, "", "copilot", ghAuthOK, "")
+	reportGHAuth(&b, "", "copilot", "auto", ghAuthOK, "")
 	if s := b.String(); strings.Contains(s, "push branches") || !strings.Contains(s, "insteadOf") {
 		t.Errorf("SSH origin: %q", s)
 	}

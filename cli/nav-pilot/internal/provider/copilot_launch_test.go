@@ -368,6 +368,9 @@ func TestCopilotLaunchAuthEnvironment(t *testing.T) {
 					if err == nil || !strings.Contains(err.Error(), "copilot_auth_mode=env_only") {
 						t.Fatalf("want env_only refusal, got %v", err)
 					}
+					if !strings.Contains(err.Error(), "Keep env_only and export a Copilot token") || !strings.Contains(err.Error(), "nav-pilot config set copilot_auth_mode auto, then restart with "+HostGHRestartCommand) {
+						t.Fatalf("refusal must offer an explicit mode change before clean restart: %v", err)
+					}
 					if _, err := os.Stat(out); !errors.Is(err, os.ErrNotExist) {
 						t.Fatalf("cplt must not launch, output stat: %v", err)
 					}

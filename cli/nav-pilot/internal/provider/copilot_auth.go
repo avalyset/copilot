@@ -33,8 +33,12 @@ func CleanHostGHEnv(env []string) []string {
 
 // ReportHostGHRecovery scopes environment cleanup to each host command so a
 // polluted shell cannot override the stored login at login or restart time.
-func ReportHostGHRecovery(w io.Writer) {
-	fmt.Fprintf(w, "nav-pilot does not start login: gh can fall back to plaintext storage if its credential store fails. If you choose manual recovery, install gh in a system or Homebrew binary directory and run in a host terminal:\n  %s\n  %s\nBefore restart, require github.com to report (keyring). If it reports a config-file path, stop and fix credential-store access; do not restart on that plaintext fallback. This check reports storage metadata, not a guarantee of secure-only login. Then restart:\n  %s\nChoose the account you intend to use; this command changes gh's identity, not nav-pilot's own login or Copilot's native login.\n", CopilotHostLoginCommand, HostGHStorageCheckCommand, HostGHRestartCommand)
+func ReportHostGHRecovery(w io.Writer, mode string) {
+	fmt.Fprintf(w, "nav-pilot does not start login: gh can fall back to plaintext storage if its credential store fails. If you choose manual recovery, install gh in a system or Homebrew binary directory and run in a host terminal:\n  %s\n  %s\nBefore restart, require github.com to report (keyring). If it reports a config-file path, stop and fix credential-store access; do not restart on that plaintext fallback. This check reports storage metadata, not a guarantee of secure-only login.\n", CopilotHostLoginCommand, HostGHStorageCheckCommand)
+	if mode == "env_only" {
+		fmt.Fprintln(w, "copilot_auth_mode=env_only rejects a restart without exported tokens. To choose stored-login recovery, explicitly change the mode first:\n  nav-pilot config set copilot_auth_mode auto\nOtherwise keep env_only and supply a Copilot token; do not use the token-free restart below. nav-pilot has not changed your configuration.")
+	}
+	fmt.Fprintf(w, "Then restart for stored-login recovery:\n  %s\nChoose the account you intend to use; this command changes gh's identity, not nav-pilot's own login or Copilot's native login.\n", HostGHRestartCommand)
 }
 
 // ReportCopilotAuthRecovery never probes the Keychain or starts login. Native
@@ -55,7 +59,7 @@ func ReportCopilotAuthRecovery(w io.Writer, env []string, mode string) {
 		return
 	}
 	fmt.Fprintln(w, "Could not confirm a Copilot login from the environment or gh's github.com login record. Native Copilot Keychain login may still work; launch will continue. If you need to sign in, choose an account with Copilot access and exit the sandbox first: cplt blocks browser opening by default, so Copilot /login may fail.")
-	ReportHostGHRecovery(w)
+	ReportHostGHRecovery(w, mode)
 }
 
 // A login record is evidence, not proof that its token is still valid. Avoid

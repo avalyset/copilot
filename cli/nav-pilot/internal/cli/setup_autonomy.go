@@ -426,15 +426,17 @@ func ghAuthFrom(out []byte, err error) (ghAuth, string) {
 	}
 }
 
-// reportGHAuth prints the sign-in result and, when push or PRs would fail,
-// the exact command that fixes it.
-func reportGHAuth(w io.Writer, indent, client string, st ghAuth, detail string) {
+// The cleared probe checks stored host login, not ambient tokens or sandbox delivery.
+func reportGHAuth(w io.Writer, indent, client, authMode string, st ghAuth, detail string) {
+	if client != "copilot" {
+		authMode = "auto"
+	}
 	switch {
 	case st == ghAuthMissing:
 		fmt.Fprintf(w, "%s%s Trusted host gh is not installed; the agent needs it to open PRs. Install it with %s\n", indent, yellow("⚠"),
 			bold(domain.PkgForInstall().Pick("brew install gh", "sudo apt install gh")))
 	case st == ghAuthNone:
-		fmt.Fprintf(w, "%s%s gh is not signed in to github.com (or its token no longer works), so the agent cannot push or open PRs.\n", indent, yellow("⚠"))
+		fmt.Fprintf(w, "%s%s No working stored host gh login for github.com was found with token overrides removed. Ambient-token authentication and sandbox push/PR authentication remain unverified.\n", indent, yellow("⚠"))
 	case (st == ghAuthOK || st == ghAuthKeyring) && originUsesSSH():
 		fmt.Fprintf(w, "%s%s gh is signed in to github.com. This repo's origin uses SSH, which cplt blocks, so pushes fail. Run %s\n", indent, yellow("⚠"),
 			bold(`git config --global url."https://github.com/".insteadOf "git@github.com:"`))
@@ -444,12 +446,12 @@ func reportGHAuth(w io.Writer, indent, client string, st ghAuth, detail string) 
 		fmt.Fprintf(w, "%s%s Could not check the gh sign-in (%s). Run %s on the host to see it.\n", indent, dim("-"), detail, bold(providerpkg.HostGHStorageCheckCommand))
 	}
 	if st == ghAuthMissing || st == ghAuthNone {
-		providerpkg.ReportHostGHRecovery(w)
-		if client == "copilot" {
+		providerpkg.ReportHostGHRecovery(w, authMode)
+		if client == "copilot" && authMode != "env_only" {
 			fmt.Fprintln(w, "Native Copilot Keychain login may still work; launch will continue. If Copilot needs login, use an account with Copilot access and sign in on the host: cplt blocks browser opening by default.")
 		}
 	} else if client == "copilot" && st == ghAuthUnknown {
-		providerpkg.ReportCopilotAuthRecovery(w, os.Environ(), "auto")
+		providerpkg.ReportCopilotAuthRecovery(w, os.Environ(), authMode)
 	}
 	if st == ghAuthOK || st == ghAuthKeyring {
 		if st == ghAuthOK {

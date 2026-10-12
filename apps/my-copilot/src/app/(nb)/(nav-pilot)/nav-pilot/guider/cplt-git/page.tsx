@@ -40,11 +40,14 @@ export default function CpltGit() {
           </LinkableHeading>
           <BodyLong>
             SSH-nøklene dine er stengt i sandkassen, så git må bruke HTTPS med tokenet fra{" "}
-            <code className={code}>gh</code>. Kjør dette i terminalen, utenfor cplt:
+            <code className={code}>gh</code>. Logg inn utenfor cplt med den rensede oppskriften under{" "}
+            <NextLink href="/nav-pilot/guider/kom-i-gang#logg-inn" className={linkClass}>
+              Logg inn på GitHub
+            </NextLink>
+            . Kontroller kontoen og sikker lagring før du kjører dette utenfor cplt:
           </BodyLong>
           <CodeBlock compact>
-            {`gh auth login --hostname github.com
-gh auth setup-git --hostname github.com
+            {`(unset GH_TOKEN GITHUB_TOKEN COPILOT_GITHUB_TOKEN GH_HOST GH_REPO; gh auth setup-git --hostname github.com)
 git remote -v`}
           </CodeBlock>
           <BodyLong>
@@ -211,14 +214,18 @@ gh pr create --head min-branch`}
             Push fra OpenCode
           </LinkableHeading>
           <BodyLong>
-            Logg gh inn utenfor cplt. På Mac lagrer gh tokenet i nøkkelringen når den er tilgjengelig. Med gh-vakta på
-            henter nyere cplt tokenet før OpenCode starter og gir det til godkjente gh-kommandoer. Git over HTTPS bruker
-            den samme gh-vakta som credential helper. Du trenger ikke eksportere tokenet til agenten:
+            Logg gh inn utenfor cplt med den rensede oppskriften under{" "}
+            <NextLink href="/nav-pilot/guider/kom-i-gang#logg-inn" className={linkClass}>
+              Logg inn på GitHub
+            </NextLink>
+            . Kontroller kontoen og sikker lagring først. På Mac lagrer gh tokenet i nøkkelringen når den er
+            tilgjengelig. Med gh-vakta på henter nyere cplt tokenet før OpenCode starter og gir det til godkjente
+            gh-kommandoer. Git over HTTPS bruker den samme gh-vakta som credential helper. Du trenger ikke eksportere
+            tokenet til agenten:
           </BodyLong>
           <CodeBlock compact>
-            {`gh auth login --hostname github.com
-gh auth setup-git --hostname github.com
-cplt doctor --agent opencode`}
+            {`(unset GH_TOKEN GITHUB_TOKEN COPILOT_GITHUB_TOKEN GH_HOST GH_REPO; gh auth setup-git --hostname github.com)
+(unset GH_TOKEN GITHUB_TOKEN COPILOT_GITHUB_TOKEN GH_HOST GH_REPO; cplt doctor --agent opencode)`}
           </CodeBlock>
           <BodyLong>
             Feiler push fortsatt, kontroller at remote bruker HTTPS og at gh-vakta er på. Oppgrader cplt hvis du har en

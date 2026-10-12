@@ -80,13 +80,32 @@ export default function KomIGang() {
           <BodyLong>
             Agenten pusher og åpner pull requests med gh-innloggingen din. Logg inn én gang, utenfor sandkassen:
           </BodyLong>
-          <CodeBlock compact>{`gh auth login --hostname github.com
-gh auth status --hostname github.com`}</CodeBlock>
+          <CodeBlock
+            compact
+          >{`(unset GH_TOKEN GITHUB_TOKEN COPILOT_GITHUB_TOKEN GH_HOST GH_REPO; gh auth login --hostname github.com --web)
+(unset GH_TOKEN GITHUB_TOKEN COPILOT_GITHUB_TOKEN GH_HOST GH_REPO; gh auth status --hostname github.com)`}</CodeBlock>
+          <BodyLong>
+            Kontroller at github.com viser riktig konto og <code className={code}>(keyring)</code>. Viser gh en
+            config-fil som tokenlager, stopp og løs tilgangen til nøkkelringen før du starter agenten. gh kan lagre i
+            klartekst hvis nøkkelringen svikter. Statussjekken viser lagringsmetadata, ikke en garanti for at
+            innloggingen bare brukte sikker lagring.
+          </BodyLong>
+          <BodyLong>
+            Har du valgt <code className={code}>copilot_auth_mode=env_only</code>, avviser nav-pilot oppstart uten
+            eksportert token. Vil du bruke lagret innlogging, velg det uttrykkelig med{" "}
+            <code className={code}>nav-pilot config set copilot_auth_mode auto</code> før oppstart. Ellers beholder du{" "}
+            <code className={code}>env_only</code> og gir klienten et Copilot-token. nav-pilot endrer ikke dette for
+            deg.
+          </BodyLong>
+          <BodyLong>Etter kontrollen starter du fra repoet uten token- og host-overstyringer:</BodyLong>
+          <CodeBlock
+            compact
+          >{`(unset GH_TOKEN GITHUB_TOKEN COPILOT_GITHUB_TOKEN GH_HOST GH_REPO; nav-pilot)`}</CodeBlock>
           <BodyLong>
             Åpner <code className={code}>/login</code> fra nav-pilot ikke nettleseren, eller får du ikke kopiert URL-en?
             Avslutt agenten og logg gh inn i en vanlig terminal utenfor cplt med kommandoen over. Kontroller kontoen og
-            Copilot-tilgangen, og start nav-pilot på nytt. Velg <strong>No, cancel sign-in</strong> hvis Copilot tilbyr
-            lagring i klartekst. Se{" "}
+            Copilot-tilgangen, og bruk oppstartskommandoen over. Velg <strong>No, cancel sign-in</strong> hvis Copilot
+            tilbyr lagring i klartekst. Se{" "}
             <NextLink href="/nav-pilot/guider/cplt-feilmeldinger#login-nettleser" className={linkClass}>
               oppskriften når nettleseren ikke åpner eller URL-en ikke kan kopieres
             </NextLink>
@@ -102,8 +121,10 @@ gh auth status --hostname github.com`}</CodeBlock>
             standardinnstillingene kan cplt sende gh-tokenet som <code className={code}>GH_TOKEN</code> og stenge
             agentens tilgang til nøkkelringen. Kontoen og tokenet må ha Copilot-tilgang. Kontroller oppsettet:
           </BodyLong>
-          <CodeBlock compact>{`cplt doctor --agent copilot
-cplt --agent copilot -- -p "Reply with OK only"`}</CodeBlock>
+          <CodeBlock
+            compact
+          >{`(unset GH_TOKEN GITHUB_TOKEN COPILOT_GITHUB_TOKEN GH_HOST GH_REPO; cplt doctor --agent copilot)
+(unset GH_TOKEN GITHUB_TOKEN COPILOT_GITHUB_TOKEN GH_HOST GH_REPO; cplt --agent copilot -- -p "Reply with OK only")`}</CodeBlock>
           <BodyLong>
             Viser doctor <code className={code}>keychain: denied</code> og at tokenet kommer fra gh, trenger du normalt
             ikke kjøre <code className={code}>/login</code> i Copilot. cplt henter foreløpig ikke Copilots eget token
@@ -137,7 +158,7 @@ cplt --agent copilot -- -p "Reply with OK only"`}</CodeBlock>
           </LinkableHeading>
           <BodyLong>Gå til et repo og start nav-pilot:</BodyLong>
           <CodeBlock compact>{`cd ~/src/min-app
-nav-pilot`}</CodeBlock>
+(unset GH_TOKEN GITHUB_TOKEN COPILOT_GITHUB_TOKEN GH_HOST GH_REPO; nav-pilot)`}</CodeBlock>
           <BodyLong>
             Første gang spør nav-pilot om noen innstillinger. Enter gir det anbefalte valget. Spørsmålene er på engelsk:
           </BodyLong>

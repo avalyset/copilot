@@ -567,8 +567,8 @@ func applyCopilotAuthMode(env []string, authMode string) ([]string, error) {
 	case "env_only":
 		if !hasEnvToken(env) {
 			return env, fmt.Errorf(
-				"copilot_auth_mode=env_only: none of %s is set; launch aborted. Export a Copilot token, or run nav-pilot config set copilot_auth_mode auto to use stored login",
-				strings.Join(ghTokenVars, "/"))
+				"copilot_auth_mode=env_only: none of %s is set; launch aborted. Keep env_only and export a Copilot token, or explicitly choose stored-login recovery with nav-pilot config set copilot_auth_mode auto, then restart with %s. nav-pilot has not changed your configuration",
+				strings.Join(ghTokenVars, "/"), HostGHRestartCommand)
 		}
 		return env, nil
 

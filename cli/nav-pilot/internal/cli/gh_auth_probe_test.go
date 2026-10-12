@@ -49,9 +49,12 @@ func TestHostGHProbeDecisionBoundary(t *testing.T) {
 				t.Fatalf("status = %v, %s", st, detail)
 			}
 			var out bytes.Buffer
-			reportGHAuth(&out, "", "copilot", st, detail)
+			reportGHAuth(&out, "", "copilot", "auto", st, detail)
 			if st == ghAuthNone && !strings.Contains(out.String(), "does not start login") {
 				t.Fatalf("missing manual recovery: %s", &out)
+			}
+			if st == ghAuthNone && (!strings.Contains(out.String(), "Ambient-token authentication and sandbox push/PR authentication remain unverified") || strings.Contains(out.String(), "cannot push or open PRs")) {
+				t.Fatalf("cleared probe must not classify ambient authentication: %s", &out)
 			}
 			if st == ghAuthOK && !strings.Contains(out.String(), "has not verified secure storage") {
 				t.Fatalf("plaintext must not promise secure storage: %s", &out)
@@ -95,7 +98,7 @@ func TestGHAuthStorageMixedAccounts(t *testing.T) {
 				t.Fatalf("storage = %v, want %v", st, tc.want)
 			}
 			var out bytes.Buffer
-			reportGHAuth(&out, "", "copilot", st, detail)
+			reportGHAuth(&out, "", "copilot", "auto", st, detail)
 			if strings.Contains(out.String(), "has not verified secure storage") != (tc.want != ghAuthKeyring) {
 				t.Fatalf("storage warning = %s", &out)
 			}
