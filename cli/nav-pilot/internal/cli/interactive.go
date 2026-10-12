@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -1015,6 +1016,18 @@ func launchClient(resolved ResolvedConfig) error {
 		return fmt.Errorf("removing unusable rtk hook: %w", err)
 	}
 	syncBuiltinHooks(resolved)
+	if resolved.Client == "copilot" {
+		id, add := copilotSessionArgs(resolved.ExtraArgs)
+		if add != nil && !providerpkg.CopilotTakesSessionID() {
+			// Before 1.0.51 the flag is unknown and the launch would fail:
+			// launch as before, and count no session.
+			id, add = "", nil
+		}
+		resolved.ExtraArgs = append(slices.Clone(resolved.ExtraArgs), add...)
+		if id != "" {
+			copilotSessionIDs = append(copilotSessionIDs, id)
+		}
+	}
 	defer func() { stopSourceRefresh() }()
 	// Before the launch vector is built: the flags derive from the record
 	// this may write (provider/mcp_hosts.go).
