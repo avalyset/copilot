@@ -7,7 +7,7 @@ import { BackendApiError } from "@/lib/backend-api";
 import { getTeamYearOverview } from "@/lib/cached-bigquery";
 import { formatDate } from "@/lib/format";
 import { teamYearCaveats, teamYearRows } from "@/lib/team-year";
-import { PrintButton, ReportNote } from "./report-controls";
+import { DocumentTitle, PrintButton, ReportNote } from "./report-controls";
 
 export const metadata: Metadata = {
   title: "Kostnadsrapport for team",
@@ -16,7 +16,16 @@ export const metadata: Metadata = {
 
 /** CSV columns shown in the report: måned, grunnlag, netto, brutto, netto uten bruk, lisenser, totalt. */
 const columns = [0, 1, 3, 4, 5, 7, 8];
-const headers = ["Måned", "Grunnlag", "Netto", "Brutto", "Netto uten bruk", "Lisenser (anslag)", "Totalt med lisenser"];
+/** Screen header and the shorter print header, so seven columns fit on A4. */
+const headers = [
+  ["Måned", "Måned"],
+  ["Grunnlag", "Grunnlag"],
+  ["Netto", "Netto"],
+  ["Brutto", "Brutto"],
+  ["Netto uten bruk", "Netto u. bruk"],
+  ["Lisenser (anslag)", "Lisenser*"],
+  ["Totalt med lisenser", "Totalt"],
+];
 
 /** CSV amounts keep a decimal point; the report shows them the Norwegian way. */
 const nok = (amount: string) =>
@@ -73,6 +82,9 @@ export default async function TeamReportPage({
 
   return (
     <main id="hovedinnhold" tabIndex={-1} className="team-report mx-auto max-w-4xl px-4 py-8 print:p-0">
+      <DocumentTitle
+        title={`Copilot-kostnad ${data.team_slug} ${data.year}${last_usage_day ? ` (til og med ${last_usage_day})` : ""}`}
+      />
       <VStack gap="space-24">
         <VStack gap="space-8">
           <Heading level="1" size="large">
@@ -91,9 +103,10 @@ export default async function TeamReportPage({
           <Table size="small">
             <TableHeader>
               <TableRow>
-                {headers.map((h, i) => (
-                  <TableHeaderCell key={h} scope="col" align={i < 2 ? "left" : "right"}>
-                    {h}
+                {headers.map(([screen, print], i) => (
+                  <TableHeaderCell key={screen} scope="col" align={i < 2 ? "left" : "right"}>
+                    <span className="print-hidden">{screen}</span>
+                    <span className="print-only">{print}</span>
                   </TableHeaderCell>
                 ))}
               </TableRow>
@@ -105,6 +118,9 @@ export default async function TeamReportPage({
             </TableBody>
           </Table>
         </div>
+        <BodyShort size="small" className="print-only">
+          * Lisenser er et anslag. «Totalt» er totalt med lisenser.
+        </BodyShort>
         <ReportNote label="Kommentar" description="Valgfri tekst som vises under tabellen i utskriften." />
         <section aria-labelledby="slik-regner-vi">
           <Heading id="slik-regner-vi" level="2" size="small" spacing>
