@@ -322,6 +322,37 @@ export interface TeamYearOverview {
   };
 }
 
+// All of Nav, one row per month of a year, from GET /api/v1/copilot/billing/admin-monthly.
+// Net months reconcile: assigned_net_usd + residual_net_usd = enterprise_net_usd.
+export interface AdminMonth {
+  month: string;
+  basis: "net" | "premium" | "gross" | "none";
+  enterprise_net_usd: number | null;
+  assigned_net_usd: number | null;
+  residual_net_usd: number | null;
+  residual_pct: number | null;
+  /** Null before team history exists. */
+  no_team_net_usd: number | null;
+  /** Preliminary list price for a month without net. */
+  gross_usd: number | null;
+  seats: number | null;
+  licence_usd_estimate: number | null;
+  total_usd: number | null;
+  loaded_at: string;
+}
+
+export interface AdminMonthlyOverview {
+  year: number;
+  months: AdminMonth[];
+  coverage: {
+    membership_from: string;
+    last_gross_day: string;
+    gross_stale: boolean;
+    last_net_month: string;
+    seats_snapshot: string;
+  };
+}
+
 export interface TeamNetOverview {
   month: string;
   teams: TeamSpend[];
@@ -553,6 +584,45 @@ export interface BillingModelForecast {
   points: BillingModelForecastPoint[];
 }
 
+// Month-end forecast against the enterprise budget, from copilot-api's admin-only
+// GET /api/v1/copilot/admin/cost-forecast. Internal: never show on public pages.
+export interface CostForecastModel {
+  model: "trend" | "per_user";
+  gross_mid_usd: number;
+  net_low_usd: number;
+  net_mid_usd: number;
+  net_high_usd: number;
+  range_pct: number;
+  allowance_runs_out?: string;
+  backtest_error_pct: number;
+  backtest_months: string[] | null;
+  budget_pct: number;
+  over_budget: boolean;
+}
+
+export interface CostForecast {
+  month: string;
+  days_elapsed: number;
+  days_in_month: number;
+  allowance_used_up: boolean;
+  allowance_run_out_date?: string;
+  net_to_date_usd: number;
+  budget_status: "set" | "missing" | "error";
+  budget_usd?: number;
+  models: CostForecastModel[];
+  /** «tidlig i måneden, stor usikkerhet» in the first seven days of the month, when the range is ±35 %. */
+  uncertainty_label?: string;
+  /** Cumulative net per day this month: actual, then the trend midpoint (forecast: true). */
+  days?: { day: string; net_usd: number; forecast: boolean }[];
+  /** Projected cumulative net per remaining day with its range, from the trend model shaped by weekday. */
+  daily_forecast?: { date: string; cumulative_net_usd: number; low: number; high: number }[];
+  /** Cumulative net from 1 January per month: closed months as billed, then the forecast to 31 December. */
+  year_forecast?: { month: string; cumulative_net_usd: number; low: number; high: number; forecast: boolean }[];
+  year_end?: { mid: number; low: number; high: number };
+  /** Days the default personal limit changed, from budget_snapshots. */
+  limit_changes?: { date: string; usd: number }[];
+}
+
 // AI adoption phases per ISO week, averaged by copilot-api; every phase is sent, also under five
 export interface AdoptionCohortWeek {
   week: string; // Monday of the ISO week
@@ -610,4 +680,43 @@ export interface SpendBands {
   run_weight: number;
   totals: SpendForecastMonth[];
   forecast: SpendForecastMonth[];
+}
+
+/** Users with at least one Copilot usage day in the month (admin only). */
+export interface ActiveUsersMonth {
+  month: string;
+  active_users: number;
+}
+
+/** Top top_pct % of billed users by net. users and net_share_pct are hidden (0 and null) below five people. */
+export interface HighConsumerTier {
+  top_pct: number;
+  users: number;
+  net_share_pct: number | null;
+}
+
+/** Users per share of their own personal limit used on one day, from the 1st (admin only, aggregates only). */
+export interface BudgetDay {
+  day: string;
+  /** 0 and bands null below five users. */
+  users: number;
+  /** Users with GitHub's own figure; 0 below five. The rest are estimates from usage data. */
+  snapshots: number;
+  bands: SpendBand[] | null;
+}
+
+/** High-consumer groups and personal budget bands for one complete month (admin only, aggregates only). */
+export interface HighConsumerMonth {
+  month: string;
+  /** "hittil" is the current month to date: budget bands only, against each user's own limit. */
+  basis: "premium" | "netto" | "hittil";
+  users: number;
+  tiers: HighConsumerTier[];
+  /** Month to date only: the day the bands are for, and users with GitHub's own figure. */
+  last_day?: string;
+  snapshots?: number;
+  limit_usd: number;
+  limit_changed: boolean;
+  /** Users by gross for the month as share of the limit; null without a limit or too few users. */
+  budget_bands: SpendBand[] | null;
 }

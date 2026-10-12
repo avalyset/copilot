@@ -21,13 +21,18 @@ import type {
   MonthlyBillingUsage,
   BillingModelDailyCost,
   BillingModelForecast,
+  CostForecast,
   MonthlyTrend,
   StalenessSummary,
   TeamAdoptionOverview,
   TeamGrossOverview,
   TeamNetOverview,
   TeamYearOverview,
+  AdminMonthlyOverview,
   SpendBands,
+  ActiveUsersMonth,
+  BudgetDay,
+  HighConsumerMonth,
   AdoptionCohortWeek,
   BillingMonthlyTrend,
   BillingModelBreakdown,
@@ -135,8 +140,31 @@ export async function getTeamYearOverview(team: string, year: number, token: str
   );
 }
 
+export async function getAdminMonthlyOverview(year: number, token: string): Promise<AdminMonthlyOverview> {
+  return backendRequest<AdminMonthlyOverview>(`/api/v1/copilot/billing/admin-monthly?year=${year}`, token);
+}
+
 export async function getSpendBands(token: string): Promise<SpendBands> {
   return backendRequest<SpendBands>("/api/v1/copilot/usage/spend-bands", token);
+}
+
+export async function getCostForecast(token: string): Promise<CostForecast> {
+  return backendRequest<CostForecast>("/api/v1/copilot/admin/cost-forecast", token);
+}
+
+/** Admin only: copilot-api answers 404 to everyone else. */
+export async function getAdminActiveUsers(token: string): Promise<ActiveUsersMonth[]> {
+  return backendRequest<ActiveUsersMonth[]>("/api/v1/copilot/billing/admin-active-users", token);
+}
+
+/** Admin only: copilot-api answers 404 to everyone else. */
+export async function getAdminHighConsumers(token: string): Promise<HighConsumerMonth[]> {
+  return backendRequest<HighConsumerMonth[]>("/api/v1/copilot/billing/admin-high-consumers", token);
+}
+
+/** Admin only: copilot-api answers 404 to everyone else. */
+export async function getAdminBudgetDays(token: string): Promise<BudgetDay[]> {
+  return backendRequest<BudgetDay[]>("/api/v1/copilot/billing/admin-budget-days", token);
 }
 
 export async function getMyTeams(token: string): Promise<string[]> {
@@ -226,12 +254,16 @@ export async function getBillingModelForecast(
   return { forecast: result.data, error: result.error };
 }
 
-export async function getBillingMonthlyTrend(token: string): Promise<{
+export async function getBillingMonthlyTrend(
+  token: string,
+  months?: number
+): Promise<{
   trend: BillingMonthlyTrend[];
   error: string | null;
 }> {
+  const query = months ? `?months=${months}` : "";
   const result = await fetchWithFallback("getBillingMonthlyTrend", [] as BillingMonthlyTrend[], () =>
-    backendRequest<BillingMonthlyTrend[]>("/api/v1/copilot/billing/monthly-trend", token)
+    backendRequest<BillingMonthlyTrend[]>(`/api/v1/copilot/billing/monthly-trend${query}`, token)
   );
   return { trend: result.data, error: result.error };
 }

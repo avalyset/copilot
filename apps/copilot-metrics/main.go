@@ -1133,8 +1133,8 @@ func ingestTodayUserBudgetSnapshot(ctx context.Context, gh *GitHubClient, budget
 		return
 	}
 
-	entries, err := budget.FetchAllUserBudgets(ctx, logins)
-	if err != nil {
+	entries, failed, err := budget.FetchAllUserBudgets(ctx, logins)
+	if err != nil && len(entries) == 0 {
 		slog.Warn("Failed to fetch user budgets", "date", dateStr, "error", err)
 		return
 	}
@@ -1142,13 +1142,25 @@ func ingestTodayUserBudgetSnapshot(ctx context.Context, gh *GitHubClient, budget
 		slog.Info("No user budget data returned", "date", dateStr)
 		return
 	}
+	if ctx.Err() != nil {
+		slog.Warn("User budget census cancelled before storing", "date", dateStr, "users", len(entries))
+		return
+	}
 
-	// Delete existing snapshot for today before re-inserting (idempotent).
+	// Idempotent per day: a complete census replaces today's rows; a partial
+	// one is stored only when nothing exists yet, so a later rate-limited rerun
+	// never shrinks a fuller snapshot.
 	exists, checkErr := bq.UserBudgetSnapshotExists(ctx, today, cfg.EnterpriseSlug)
 	if checkErr != nil {
 		slog.Warn("Could not check if user budget snapshot exists", "date", dateStr, "error", checkErr)
 		return
-	} else if exists {
+	}
+	partial := failed > 0 || err != nil
+	if exists && partial {
+		slog.Warn("Keeping existing user budget snapshot over a partial census", "date", dateStr, "users", len(entries), "failed", failed)
+		return
+	}
+	if exists {
 		if delErr := bq.DeleteUserBudgetSnapshot(ctx, today, cfg.EnterpriseSlug); delErr != nil {
 			slog.Warn("Failed to delete existing user budget snapshot", "date", dateStr, "error", delErr)
 			return
@@ -1160,7 +1172,7 @@ func ingestTodayUserBudgetSnapshot(ctx context.Context, gh *GitHubClient, budget
 		return
 	}
 
-	slog.Info("User budget snapshot ingested successfully", "date", dateStr, "users", len(entries))
+	slog.Info("User budget snapshot ingested", "date", dateStr, "users", len(entries), "failed", failed)
 }
 
 // ingestYesterdayBudgetSnapshot ensures yesterday's enterprise budget snapshot exists.

@@ -47,6 +47,7 @@ type mockBigQueryClient struct {
 	teamGross          *TeamGrossOverview
 	teamGrossErr       error
 	teamNet            *TeamNetOverview
+	anomalies          []Anomaly
 	spendBands         *SpendBands
 	teamNetErr         error
 	grossByMonth       map[string]*TeamGrossOverview
@@ -166,6 +167,10 @@ func (m *mockBigQueryClient) GetTeamNetOverview(_ context.Context, month string)
 func (m *mockBigQueryClient) GetTeamYearOverview(_ context.Context, team string, year int) (*TeamYearOverview, error) {
 	m.teamYearArgs = []any{team, year}
 	return m.teamYear, nil
+}
+
+func (m *mockBigQueryClient) GetAdminMonthlyOverview(_ context.Context, year int) (*AdminMonthlyOverview, error) {
+	return &AdminMonthlyOverview{Year: year}, nil
 }
 
 func (m *mockBigQueryClient) GetUserTeams(_ context.Context, _ string) ([]string, error) {
@@ -798,6 +803,34 @@ func containsString(s, sub string) bool {
 		}())
 }
 
+func (m *mockBigQueryClient) GetCostDays(_ context.Context, _ string) ([]CostDay, error) {
+	return nil, nil
+}
+
+func (m *mockBigQueryClient) GetCostUserDays(_ context.Context, _ string) ([]UserDay, error) {
+	return nil, nil
+}
+
+func (m *mockBigQueryClient) GetCostAnomalies(_ context.Context) ([]Anomaly, error) {
+	return m.anomalies, nil
+}
+
+func (m *mockBigQueryClient) GetLimitSnapshots(_ context.Context) ([]LimitChange, error) {
+	return nil, nil
+}
+
 func (m *mockBigQueryClient) GetSpendBands(_ context.Context) (*SpendBands, error) {
 	return m.spendBands, nil
+}
+
+func (m *mockBigQueryClient) GetActiveUsersMonthly(_ context.Context) ([]ActiveUsersMonth, error) {
+	return []ActiveUsersMonth{{Month: "2026-09", ActiveUsers: 719}}, nil
+}
+
+func (m *mockBigQueryClient) GetBudgetDays(_ context.Context) ([]BudgetDay, error) {
+	return []BudgetDay{}, nil
+}
+
+func (m *mockBigQueryClient) GetHighConsumers(_ context.Context) ([]HighConsumerMonth, error) {
+	return []HighConsumerMonth{}, nil
 }

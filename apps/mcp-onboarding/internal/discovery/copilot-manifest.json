@@ -140,7 +140,7 @@
         "infrastructure"
       ],
       "filePath": "agents/nav-pilot.agent.md",
-      "contentHash": "54d1681c3e4676529f5474c07db8176c7d0d3a2631fc714beab370817d44b158",
+      "contentHash": "018471685b00d5b714d68df69192961cf528e88a7db454902a259b257689bd42",
       "useCases": [
         "Adding PostgreSQL/Kafka",
         "Troubleshooting deployments",
@@ -260,7 +260,7 @@
       "displayName": "Bevisst KI-bruk",
       "description": "Regler for bevisst KI-bruk som alltid gjelder: forklar valg, merk rød sone, spør før full delegering. Hele rammeverket ligger i deliberate-ai-use-skillen",
       "filePath": "instructions/deliberate-ai-use.instructions.md",
-      "contentHash": "15622615367ccc328a27b93c4c9ec0a9384dd94245e6c87c2143b92c502ace85",
+      "contentHash": "c323e573246943749c88364c2c40aae13f389efb92b8ab604b63ab87f3133af5",
       "installUrl": "vscode:chat-instructions/install?url=https://raw.githubusercontent.com/navikt/copilot/main/instructions/deliberate-ai-use.instructions.md",
       "rawUrl": "https://raw.githubusercontent.com/navikt/copilot/main/instructions/deliberate-ai-use.instructions.md"
     },

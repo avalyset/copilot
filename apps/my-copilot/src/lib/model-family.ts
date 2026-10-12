@@ -12,7 +12,16 @@ const FAMILIES: [RegExp, ModelFamily][] = [
 ];
 
 export type ModelFamily =
-  "claude_opus" | "claude_sonnet" | "claude_haiku" | "claude_fable" | "gpt_mini" | "gpt" | "gemini" | "andre";
+  | "claude_opus"
+  | "claude_sonnet"
+  | "claude_haiku"
+  | "claude_fable"
+  | "gpt_mini"
+  | "gpt"
+  | "gemini"
+  | "kodegjennomgang"
+  | "auto"
+  | "andre";
 
 /** Display order and Norwegian labels. */
 export const FAMILY_LABELS: Record<ModelFamily, string> = {
@@ -23,14 +32,22 @@ export const FAMILY_LABELS: Record<ModelFamily, string> = {
   gpt: "GPT",
   gpt_mini: "GPT mini (mini, nano, Luna)",
   gemini: "Gemini",
+  kodegjennomgang: "Kodegjennomgang",
+  auto: "Auto",
   andre: "Andre",
 };
 
-/** «Claude Opus 5.5» and «claude-opus-5.5» give the same family. Unknown names give «andre». */
-export function modelFamily(model: string): ModelFamily {
+/**
+ * «Claude Opus 5.5» and «claude-opus-5.5» give the same family. Every «Auto: X» is one family, «auto», in every chart
+ * built on familyShares (owner decision 12 October 2026). Unknown names give «andre». With costPage (the admin cost page only),
+ * Copilot's code review model is its own family.
+ */
+export function modelFamily(model: string, costPage = false): ModelFamily {
   const name = model
-    .toLowerCase()
     .trim()
+    .toLowerCase()
     .replace(/[\s_]+/g, "-");
+  if (name.startsWith("auto:")) return "auto";
+  if (costPage && name === "code-review-model") return "kodegjennomgang";
   return FAMILIES.find(([pattern]) => pattern.test(name))?.[1] ?? "andre";
 }

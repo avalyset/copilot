@@ -30,9 +30,16 @@ const VERDICTS: Verdict[] = [
   { task: "Legge til et argument i 1–2 kall, i flere filer", verdict: "Godkjent for delegering" },
   { task: "Det samme i 3–8 kall", verdict: "Ikke godkjent ennå" },
   { task: "Det samme i 9 kall eller flere", verdict: "Blir i skyen" },
-  { task: "Endre én fil", verdict: "Ikke godkjent ennå" },
+  {
+    task: "Endre én fil",
+    verdict: "Ikke godkjent for delegering ennå. Modellen for 64 GB er godkjent som hovedagent",
+  },
   { task: "Lage en ny fil", verdict: "Godkjent lokalt på de to letteste trinnene, ikke for delegering" },
-  { task: "Svare på spørsmål om kodebasen", verdict: "Blir i skyen" },
+  {
+    task: "Svare på spørsmål om kodebasen",
+    verdict: "Ikke godkjent for delegering. Modellen for 64 GB og Qwen3.8-27B-OptiQ er godkjent som hovedagent",
+  },
+  { task: "Feilsøke og rette en feil", verdict: "Målt, men ingen modell er godkjent ennå" },
   { task: "decide: forklarer commit-meldingen hvorfor?", verdict: "Varsler i commit-hooken" },
   { task: "decide: bug, ønske eller spørsmål?", verdict: "Foreslår etikett" },
 ];
@@ -147,8 +154,8 @@ export default function LokalModellForklaring() {
               slår ikke inn.
             </li>
             <li>
-              Lager modellen en ny fil som ikke bygger eller består testene, får den feilen tilbake og ett nytt forsøk
-              (retry2, levert i{" "}
+              Lager eller endrer modellen en fil som ikke bygger eller består testene, får den feilen tilbake og ett
+              nytt forsøk (retry2, levert i{" "}
               <a href="https://github.com/navikt/copilot/pull/1156" className={linkClass}>
                 navikt/copilot#1156
               </a>
@@ -159,9 +166,24 @@ export default function LokalModellForklaring() {
               >
                 målingen 10. oktober 2026
               </a>
+              ). Ved endring av én fil ble 48 av 48 godkjent, 11 av dem først etter det nye forsøket (
+              <a href="https://github.com/navikt/mlx-workspace/issues/237" className={linkClass}>
+                mlx-workspace#237
+              </a>
               ).
             </li>
-            <li>Qwen 3.8-modellene og modellen for 64 GB er ikke godkjent for noe. Med dem stoppes ingenting.</li>
+            <li>
+              Qwen 3.8-modellene og modellen for 64 GB er ikke godkjent for delegering. Med dem stoppes ingenting.
+              Modellen for 64 GB er godkjent for svar om kode og endringer i én fil når den selv er hovedagent: 96 av 96
+              og 124 av 128. Qwen3.8-27B-OptiQ er godkjent for svar om kode som hovedagent: 33 av 33 (
+              <a
+                href="https://github.com/navikt/mlx-workspace/blob/main/manifest/capabilities.json"
+                className={linkClass}
+              >
+                manifestet etter målingene 12. oktober 2026
+              </a>
+              ).
+            </li>
             <li>En modell på egen LLM-server er ikke målt. Den får den generelle instruksen, og ingenting stoppes.</li>
           </Bullets>
           <BodyLong>

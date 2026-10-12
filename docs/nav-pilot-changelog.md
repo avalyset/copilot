@@ -4,6 +4,22 @@ Endringslogg for nav-pilot agent harness — agenter, skills, instruksjoner, pro
 
 ## 2026-10-12
 
+### GPT-6.1 Sol er anbefalingen for daglig koding
+
+- **Personlig anbefaling**: [/modeller](https://ki-utvikling.nav.no/modeller) og `docs/modellvalg.md` anbefaler nå GPT-6.1 Sol til daglig koding. Eier bestemte det 12. oktober 2026 etter nye målinger: GPT-6.1 Sol på Low besto 5 av 5 på t2, rv1 og rv2, som GPT-6 Sol, og rv1 og rv2 kostet 31,86 mot 36,92 credits.
+- **`@nav-pilot` blir på GPT-6 Sol**: Agentpakken er uendret. t2 er rundt 4 prosent dyrere på GPT-6.1 Sol, og t3, t4, t5, t7 og t7b er ikke kjørt på nytt.
+- **Ingen innstilling endres**: Anbefalingen står bare i dokumentasjonen og på nettsiden.
+- **Vær forsiktig med personopplysninger**: I en pilot med tre kjøringer la GPT-6.1 Sol to ganger fødselsnummer på en Kafka-melding uten å spørre om personvern først. GPT-6 Sol stoppet før kodeendring i alle fem kjøringene. Pilot, ikke en avgjørelse om pinnen. Se [målingen](golden-baselines/2026-10-12-pin-pilot-sol61/).
+
+### Bedre grafer og innholdsfortegnelse på /modeller
+
+- **Grafen**: Credits-aksen er logaritmisk, og en linje binder sammen innsatsnivåene til hver modell. Du kan filtrere på modell og innsats, og vise de beste avveiningene mellom bestått og pris.
+- **Innholdsfortegnelse**: Siden har en fast meny med lenke til hver seksjon og hver måling, og et nytt avsnitt om innsatsnivå. «Median tid» vises som for eksempel «1 min 23 s».
+
+### Måling: Sonnet 5.5 holder for tilgjengelighet
+
+- **Resultat**: `@accessibility` på Claude Sonnet 5.5 besto 24 av 25 sjekker (uu1–uu5, fem kjøringer hver). Eneste feil var uu3: agenten skrev en egen `role="listbox"` og nevnte Aksel først etterpå. Sonnet 5.5 beholdes. Se [målingen](golden-baselines/2026-10-12-sonnet-5-5-aksel/).
+
 ### `klarsprak` lastes ikke for vanlige chatsvar
 
 - **Færre unødvendige innlastinger**: Skillen lastes for norsk tekst som havner i en fil eller blir publisert: README, dokumentasjon, UI-tekst, nettsider, e-poster, commit-meldinger og PR- og issue-beskrivelser. Den lastes også når du limer inn tekst og ber om språkvask eller korrektur. Den lastes ikke for vanlige svar i chatten, heller ikke når svaret er på norsk eller forklarer kode. Før sto `klarsprak` for rundt 40 prosent av alle skill-innlastinger, og de fleste endte i et chatsvar.
@@ -12,7 +28,9 @@ Endringslogg for nav-pilot agent harness — agenter, skills, instruksjoner, pro
 ### `@nav-pilot` skriver kode for rød sone når du ber om det
 
 - **Stubber som før**: For deler av planen som er merket rød sone, lager `@nav-pilot` fortsatt testskjeletter og stubber som standard.
-- **Kode når du ber om det**: Skriver du for eksempel «implementer rød sone, jeg reviewer», skriver agenten koden, beholder 🔴-merkingen og avslutter med en sjekkliste per del: hva du skal kontrollere, hvilke regler som alltid må holde og hvilke tester du bør lese. Deretter ber den deg forklare koden. Ber du om det før eller under planleggingen, står det «implementeres av nav-pilot, utvikleren reviewer» i planen i stedet for «skriv selv».
+- **Kode når du ber om det**: Skriver du for eksempel «implementer rød sone, jeg reviewer», skriver agenten koden og beholder 🔴-merkingen. Du må be om koden uttrykkelig. Et løfte om å se over koden etterpå, som «jeg reviewer» alene, er ikke nok. Det gjelder på alle språk, også engelsk.
+- **Bare delene du nevner**: Nevner du bare noen av de røde delene, skriver agenten bare dem og lager stubber for resten.
+- **Sjekkliste til slutt**: Svaret med koden slutter med overskriften «Sjekkliste for rød sone» og ett punkt per del agenten skrev: hva du skal kontrollere, hvilke regler som alltid må holde og hvilke tester du bør lese. Deretter ber agenten deg forklare koden. Ber du om koden før eller under planleggingen, står det «implementeres av nav-pilot, utvikleren reviewer» i planen i stedet for «skriv selv».
 - **Samme soner overalt**: Sonelistene er nå like i instruksjonen, skillen, agenten, retningslinjene, [planleggingssiden](https://ki-utvikling.nav.no/nav-pilot/forklaring/planlegging) og designdokumentet. Rød sone er feilsøking, nye konsepter, sentral forretningslogikk, sikkerhetskritisk kode og arkitekturvalg. Grønn sone er boilerplate, teknologi du kan fra før, konfigurasjon, refaktorering med kjent mål og testdata. En test sjekker at listene holder seg like.
 - **For deg som har nav-pilot fra før**: Kjør `nav-pilot sync --apply`.
 
@@ -23,6 +41,7 @@ Endringslogg for nav-pilot agent harness — agenter, skills, instruksjoner, pro
 - **Krever Copilot CLI 1.0.51**: `--session-id` kom i Copilot CLI 1.0.51. Med eldre Copilot starter økten som før, men den telles ikke.
 - **Bare det som skjer under nav-pilot**: Ved hver oppstart flytter nav-pilot startpunktet til slutten av øktloggen. Det du gjør i en økt med `copilot --resume` uten nav-pilot, telles ikke. Krasjet en tidligere nav-pilot-kjøring før den fikk lest økten, telles ikke det den kjøringen gjorde.
 - **Reservasjon som før**: Med `NAV_PILOT_TELEMETRY_ENABLED=false` eller `DO_NOT_TRACK=1` leser ikke nav-pilot øktloggen. Se [TELEMETRY.md](../cli/nav-pilot/TELEMETRY.md) og [personvernsiden](https://ki-utvikling.nav.no/nav-pilot/forklaring/personvern).
+- **Nye økter telles nå**: En feil gjorde at nav-pilot ga opp nye Copilot-økter før Copilot hadde opprettet øktmappen, så ingen øktall kom fram. Det er rettet.
 - **Dashboard**: Grafana-dashboardet for nav-pilot har nye paneler for øktene, blant annet hook-kjøringer, feilrate per verktøy, subagenter og øktlengde.
 
 ### Tall fra opencode-øktene nav-pilot starter
