@@ -35,6 +35,8 @@ const net: TeamNetOverview = {
   comparison: "ok",
 };
 
+afterEach(() => vi.unstubAllGlobals());
+
 describe("Team insight", () => {
   it("unifies month, search and optional columns without changing cost defaults", () => {
     render(
@@ -59,14 +61,15 @@ describe("Team insight", () => {
     );
     const table = screen.getByRole("table", { name: "Andre team" });
     expect(screen.getByRole("combobox", { name: "Måned" })).toHaveValue("2026-09");
-    expect(within(table).getAllByRole("columnheader")).toHaveLength(5);
+    expect(within(table).getAllByRole("columnheader")).toHaveLength(6);
+    expect(within(table).getAllByRole("button", { name: /som CSV$/ })).toHaveLength(2);
     for (const label of ["Leverandører", "Modelltyper", "Funksjon", "Språk"])
       expect(within(table).queryByRole("columnheader", { name: label })).not.toBeInTheDocument();
     fireEvent.click(screen.getByText("Velg kolonner"));
     expect(screen.getByRole("button", { name: "Velg kolonner" })).toHaveAttribute("aria-expanded", "true");
     for (const label of ["Leverandører", "Modelltyper", "Funksjon", "Språk"])
       fireEvent.click(screen.getByRole("checkbox", { name: label }));
-    expect(within(table).getAllByRole("columnheader")).toHaveLength(9);
+    expect(within(table).getAllByRole("columnheader")).toHaveLength(10);
     const rows = within(table).getAllByRole("row").slice(1);
     expect(
       Array.from(within(rows[0]).getAllByRole("cell")[5].querySelectorAll("span"), (span) => span.textContent)
@@ -112,7 +115,7 @@ describe("Team insight", () => {
     fireEvent.click(screen.getByRole("button", { name: "Velg kolonner" }));
     for (const label of ["Leverandører", "Modelltyper"]) fireEvent.click(screen.getByRole("checkbox", { name: label }));
     const row = screen.getByText("alpha").closest("tr")!;
-    for (const cell of within(row).getAllByRole("cell").slice(5)) {
+    for (const cell of within(row).getAllByRole("cell").slice(5, -1)) {
       expect(cell).toHaveTextContent("Ingen modellinteraksjoner");
       expect(cell.querySelector("svg")).toBeNull();
     }
@@ -261,5 +264,22 @@ describe("Team insight", () => {
     expect(screen.getByText(/16\sUSD/)).toBeInTheDocument();
     expect(screen.getByText(/[−-]20\sUSD/)).toHaveClass("text-[var(--ax-text-success)]");
     expect(screen.getByText(/[−-]5\sUSD/)).not.toHaveAttribute("class");
+  });
+
+  it("shows an error instead of saving a failed year CSV", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response('{"error":"failed_to_fetch_usage"}', { status: 500 }))
+    );
+    render(
+      <TeamControls month="2026-09">
+        <TeamGrossUsage data={gross} net={null} myTeams={[]} />
+      </TeamControls>
+    );
+    fireEvent.click(screen.getAllByRole("button", { name: /som CSV$/ })[0]);
+    expect(
+      await screen.findByText("Kunne ikke laste ned (HTTP 500: datatjenesten svarte med en feil). Prøv igjen senere.")
+    ).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/^\/api\/team-year\?team=\d+&year=2026$/));
   });
 });

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { BodyShort, Heading, HStack, Table, VStack } from "@navikt/ds-react";
-import { Buildings3Icon, CodeIcon, CpuIcon, WrenchIcon } from "@navikt/aksel-icons";
+import { BodyShort, Button, ErrorMessage, Heading, HStack, Table, VStack } from "@navikt/ds-react";
+import { Buildings3Icon, CodeIcon, CpuIcon, DownloadIcon, WrenchIcon } from "@navikt/aksel-icons";
 import { TableBody, TableDataCell, TableHeader, TableRow } from "@navikt/ds-react/Table";
 import type { TeamGrossOverview, TeamNetOverview, TeamSpend } from "@/lib/types";
 import { useTeamControls } from "./team-controls";
@@ -10,6 +10,60 @@ import TeamUsageValue from "./team-usage-value";
 import { formatDate, formatUSD } from "@/lib/format";
 
 type Team = TeamSpend;
+
+/** Fetches the year CSV first, so a failure shows a message instead of saving the error body as a file. */
+function TeamYearCsv({ team, year }: { team: Team; year: string }) {
+  const [state, setState] = useState<"idle" | "loading" | string>("idle");
+  const download = async () => {
+    setState("loading");
+    try {
+      const res = await fetch(`/api/team-year?team=${encodeURIComponent(team.team_id)}&year=${year}`);
+      if (!res.ok) {
+        const reason =
+          res.status === 401
+            ? "du er ikke logget inn"
+            : res.status === 400
+              ? "ugyldig team eller år"
+              : "datatjenesten svarte med en feil";
+        setState(`Kunne ikke laste ned (HTTP ${res.status}: ${reason}). Prøv igjen senere.`);
+        return;
+      }
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement("a");
+      a.href = url;
+      // Same name as the route's Content-Disposition, which guards the slug.
+      a.download =
+        /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ?? `copilot-${year}.csv`;
+      a.click();
+      // Revoking at once can abort the download in Safari.
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setState("idle");
+    } catch {
+      setState("Kunne ikke laste ned (ingen kontakt med tjenesten). Prøv igjen senere.");
+    }
+  };
+  return (
+    <VStack gap="space-4">
+      <Button
+        type="button"
+        onClick={download}
+        aria-describedby={state.startsWith("Kunne") ? `csv-feil-${team.team_id}` : undefined}
+        loading={state === "loading"}
+        variant="tertiary"
+        size="xsmall"
+        icon={<DownloadIcon aria-hidden />}
+        aria-label={`Last ned forbruket for ${team.team_slug} hittil i ${year} som CSV`}
+      >
+        CSV
+      </Button>
+      {state.startsWith("Kunne") && (
+        <ErrorMessage size="small" id={`csv-feil-${team.team_id}`} role="alert">
+          {state}
+        </ErrorMessage>
+      )}
+    </VStack>
+  );
+}
 
 export default function TeamGrossUsage({
   data,
@@ -51,6 +105,7 @@ export default function TeamGrossUsage({
       });
   const title = net ? "Forbruk" : "Forbruk før fradrag";
 
+  const year = data.month.slice(0, 4);
   const hidden = net ?? data;
   const rows = (teams: Team[]) =>
     filtered(teams).map((team) => {
@@ -113,6 +168,9 @@ export default function TeamGrossUsage({
               )}
             </TableDataCell>
           )}
+          <TableDataCell>
+            <TeamYearCsv team={team} year={year} />
+          </TableDataCell>
         </TableRow>
       );
     });
@@ -184,6 +242,9 @@ export default function TeamGrossUsage({
                 </HStack>
               </Table.ColumnHeader>
             )}
+            <Table.ColumnHeader scope="col" title={`Forbruk per måned hittil i ${year}, som CSV-fil`}>
+              Hittil i år
+            </Table.ColumnHeader>
           </TableRow>
         </TableHeader>
         <TableBody>{rows(teams)}</TableBody>
@@ -212,6 +273,10 @@ export default function TeamGrossUsage({
             </BodyShort>
           )}
           {comparisonReason && <BodyShort>{comparisonReason}</BodyShort>}
+          <BodyShort>
+            «Hittil i år» laster ned en CSV-fil med teamets forbruk per måned i {year}, regnet på samme måte som her.
+            Filen har også et anslag for lisenser og forklarer hva tallene bygger på.
+          </BodyShort>
         </VStack>
       </section>
 
