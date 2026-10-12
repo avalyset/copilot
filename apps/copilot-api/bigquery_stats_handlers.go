@@ -115,7 +115,7 @@ func (h *BigQueryHandlers) handleTeamYearOverview(w http.ResponseWriter, r *http
 	}
 	overview, err := h.bqClient.GetTeamYearOverview(r.Context(), team, year)
 	if err != nil {
-		slog.Error("Failed to fetch team year usage")
+		slog.Error("Failed to fetch team year usage", "error", err)
 		respondError(w, "internal_error", "Failed to fetch team year usage", http.StatusInternalServerError)
 		return
 	}
