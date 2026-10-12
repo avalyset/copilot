@@ -49,7 +49,8 @@ export default function GettingStarted() {
                 for å installere nav-pilot, cplt og klienten.
               </li>
               <li>
-                Logg inn på GitHub med <code>gh auth login</code>.
+                Logg gh inn utenfor cplt med <code>gh auth login --hostname github.com</code>. OpenCode bruker sin egen
+                innlogging via <code>/connect</code>.
               </li>
               <li>
                 Kjør <code>nav-pilot</code> i repoet ditt. Agenten starter i cplt.
@@ -109,9 +110,12 @@ export default function GettingStarted() {
           Feilsøking: "Du har ikke tilgang"
         </Heading>
         <BodyShort>
-          Hvis Copilot sier at du ikke har tilgang selv om du vet at lisensen er tildelt, prøv å{" "}
-          <strong>logge ut og inn igjen</strong> av GitHub, i terminalen med <code>/logout</code> og <code>/login</code>{" "}
-          eller i editoren. Ofte henger gamle sesjons-tokens igjen.
+          Kontroller at du bruker GitHub-kontoen som har Nav-lisensen. I terminalen kan et eksportert token overstyre
+          den lagrede innloggingen. Følg{" "}
+          <NextLink href="/nav-pilot/guider/cplt-feilmeldinger#keyring" className="text-blue-600 hover:underline">
+            feilsøkingen for innlogging i cplt
+          </NextLink>
+          . I editoren kan du logge ut av GitHub og inn igjen med riktig konto.
         </BodyShort>
       </Alert>
     </div>

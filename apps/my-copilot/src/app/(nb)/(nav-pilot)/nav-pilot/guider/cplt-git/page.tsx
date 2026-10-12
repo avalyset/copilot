@@ -43,9 +43,9 @@ export default function CpltGit() {
             <code className={code}>gh</code>. Kjør dette i terminalen, utenfor cplt:
           </BodyLong>
           <CodeBlock compact>
-            {`gh auth login
-gh auth setup-git
-git remote -v          # skal vise https://github.com/...`}
+            {`gh auth login --hostname github.com
+gh auth setup-git --hostname github.com
+git remote -v`}
           </CodeBlock>
           <BodyLong>
             Viser <code className={code}>git remote -v</code> <code className={code}>git@github.com:</code>, se{" "}
@@ -211,16 +211,22 @@ gh pr create --head min-branch`}
             Push fra OpenCode
           </LinkableHeading>
           <BodyLong>
-            Gjelder macOS. <code className={code}>gh auth login</code> legger tokenet i nøkkelringen. Copilot når den,
-            OpenCode gjør ikke, så <code className={code}>git push</code> fra OpenCode får ikke noe token. cplt fjerner
-            også <code className={code}>GH_TOKEN</code> fra miljøet til OpenCode. Send det inn:
+            Logg gh inn utenfor cplt. På Mac lagrer gh tokenet i nøkkelringen når den er tilgjengelig. Med gh-vakta på
+            henter nyere cplt tokenet før OpenCode starter og gir det til godkjente gh-kommandoer. Git over HTTPS bruker
+            den samme gh-vakta som credential helper. Du trenger ikke eksportere tokenet til agenten:
           </BodyLong>
           <CodeBlock compact>
-            {`cplt config set sandbox.pass_env GH_TOKEN
-export GH_TOKEN=$(gh auth token)   # i skallet du starter nav-pilot fra`}
+            {`gh auth login --hostname github.com
+gh auth setup-git --hostname github.com
+cplt doctor --agent opencode`}
           </CodeBlock>
           <BodyLong>
-            Da ligger tokenet ditt i miljøet til agenten, og den kan bruke det mot GitHub uten å gå via gh-vakta.
+            Feiler push fortsatt, kontroller at remote bruker HTTPS og at gh-vakta er på. Oppgrader cplt hvis du har en
+            eldre versjon. Se{" "}
+            <NextLink href={`${FAQ}#keyring`} className={linkClass}>
+              innloggingsfeilsøkingen
+            </NextLink>{" "}
+            hvis gh eller klienten ber om å lagre tokenet i klartekst.
           </BodyLong>
         </VStack>
       </section>

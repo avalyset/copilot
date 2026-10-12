@@ -8,10 +8,10 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
-	"runtime"
 	"strings"
 	"testing"
 
+	providerpkg "github.com/navikt/copilot/cli/nav-pilot/internal/provider"
 	"github.com/navikt/copilot/cli/nav-pilot/internal/testhome"
 )
 
@@ -120,6 +120,11 @@ func TestGHAuthFrom(t *testing.T) {
 }
 
 func TestReportGHAuth(t *testing.T) {
+	isolatedConfig(t)
+	t.Setenv("GH_CONFIG_DIR", t.TempDir())
+	for _, name := range []string{"GH_TOKEN", "GITHUB_TOKEN", "COPILOT_GITHUB_TOKEN"} {
+		t.Setenv(name, "")
+	}
 	stubSSH(t, false)
 	out := func(client string, st ghAuth) string {
 		var b bytes.Buffer
@@ -128,6 +133,9 @@ func TestReportGHAuth(t *testing.T) {
 	}
 	if s := out("copilot", ghAuthNone); !strings.Contains(s, "gh auth login") || strings.Contains(s, "insecure") {
 		t.Errorf("copilot, not signed in: %q", s)
+	}
+	if s := out("copilot", ghAuthNone); !strings.Contains(s, "gh auth login --hostname github.com --web") || !strings.Contains(s, "launch will continue") {
+		t.Errorf("Copilot host recovery: %q", s)
 	}
 	if s := out("copilot", ghAuthKeyring); !strings.Contains(s, "signed in") {
 		t.Errorf("copilot, keyring: %q", s)
@@ -138,13 +146,22 @@ func TestReportGHAuth(t *testing.T) {
 	if s := out("copilot", ghAuthUnknown); !strings.Contains(s, "timeout") {
 		t.Errorf("unknown: %q", s)
 	}
-	s := out("opencode", ghAuthKeyring)
-	if runtime.GOOS == "darwin" {
-		if !strings.Contains(s, "gh auth login --insecure-storage") {
-			t.Errorf("opencode on macOS with a Keychain token: %q", s)
+	for _, client := range []string{"copilot", "opencode", "pi"} {
+		for _, state := range []ghAuth{ghAuthMissing, ghAuthNone, ghAuthKeyring} {
+			s := out(client, state)
+			if strings.Contains(s, "--insecure-storage") {
+				t.Errorf("%s must keep secure storage: %q", client, s)
+			}
+			if state == ghAuthKeyring {
+				for _, want := range []string{"exec-token cache", "gh_guard.enabled", "cplt doctor", "upgrade cplt:"} {
+					if !strings.Contains(s, want) {
+						t.Errorf("%s keyring diagnostic missing %q: %s", client, want, s)
+					}
+				}
+			} else if !strings.Contains(s, providerpkg.CopilotHostLoginCommand) || !strings.Contains(s, providerpkg.HostGHRestartCommand) {
+				t.Errorf("%s secure host recovery: %s", client, s)
+			}
 		}
-	} else if !strings.Contains(s, "signed in") {
-		t.Errorf("opencode, keyring off macOS: %q", s)
 	}
 }
 

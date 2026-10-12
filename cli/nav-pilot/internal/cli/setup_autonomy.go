@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -421,34 +420,33 @@ func ghAuthFrom(out []byte, err error) (ghAuth, string) {
 	}
 }
 
-// keychainBlocked is true where cplt keeps the client from the macOS
-// Keychain, which is where gh keeps its token by default (#1348).
-func keychainBlocked(client string) bool {
-	return runtime.GOOS == "darwin" && (client == "opencode" || client == "pi")
-}
-
 // reportGHAuth prints the sign-in result and, when push or PRs would fail,
 // the exact command that fixes it.
 func reportGHAuth(w io.Writer, indent, client string, st ghAuth, detail string) {
-	login := "gh auth login"
-	if keychainBlocked(client) {
-		login = "gh auth login --insecure-storage"
-	}
 	switch {
 	case st == ghAuthMissing:
-		fmt.Fprintf(w, "%s%s gh is not installed; the agent needs it to open PRs. Install it with %s, then run %s\n", indent, yellow("⚠"),
-			bold(domain.PkgForInstall().Pick("brew install gh", "sudo apt install gh")), bold(login))
+		fmt.Fprintf(w, "%s%s gh is not installed; the agent needs it to open PRs. Install it with %s\n", indent, yellow("⚠"),
+			bold(domain.PkgForInstall().Pick("brew install gh", "sudo apt install gh")))
 	case st == ghAuthNone:
-		fmt.Fprintf(w, "%s%s gh is not signed in to github.com (or its token no longer works), so the agent cannot push or open PRs. Run %s\n", indent, yellow("⚠"), bold(login))
-	case st == ghAuthKeyring && keychainBlocked(client):
-		fmt.Fprintf(w, "%s%s gh keeps its token in the macOS Keychain, which cplt does not let %s read: push and PRs fail in the sandbox. Run %s\n", indent, yellow("⚠"), clientLabel[client], bold(login))
+		fmt.Fprintf(w, "%s%s gh is not signed in to github.com (or its token no longer works), so the agent cannot push or open PRs.\n", indent, yellow("⚠"))
 	case (st == ghAuthOK || st == ghAuthKeyring) && originUsesSSH():
-		fmt.Fprintf(w, "%s%s gh is signed in to github.com: the agent can open PRs. This repo's origin uses SSH, which cplt blocks, so pushes fail. Run %s\n", indent, yellow("⚠"),
+		fmt.Fprintf(w, "%s%s gh is signed in to github.com. This repo's origin uses SSH, which cplt blocks, so pushes fail. Run %s\n", indent, yellow("⚠"),
 			bold(`git config --global url."https://github.com/".insteadOf "git@github.com:"`))
 	case st == ghAuthOK || st == ghAuthKeyring:
-		fmt.Fprintf(w, "%s%s gh is signed in to github.com: the agent can push branches and open PRs\n", indent, green("✓"))
+		fmt.Fprintf(w, "%s%s gh is signed in to github.com.\n", indent, green("✓"))
 	default:
 		fmt.Fprintf(w, "%s%s Could not check the gh sign-in (%s). Run %s to see it.\n", indent, dim("-"), detail, bold("gh auth status"))
+	}
+	if st == ghAuthMissing || st == ghAuthNone {
+		providerpkg.ReportHostGHRecovery(w)
+		if client == "copilot" {
+			fmt.Fprintln(w, "Native Copilot Keychain login may still work; launch will continue. If Copilot needs login, use an account with Copilot access and sign in on the host: cplt blocks browser opening by default.")
+		}
+	} else if client == "copilot" && st == ghAuthUnknown {
+		providerpkg.ReportCopilotAuthRecovery(w, os.Environ(), "auto")
+	}
+	if st == ghAuthOK || st == ghAuthKeyring {
+		fmt.Fprintf(w, "Current cplt can hand host gh credentials to sandboxed gh through its exec-token cache when gh_guard.enabled is true and GH_TOKEN is not denied. If push or PR authentication fails, run cplt doctor and cplt config get gh_guard.enabled on the host. If cache support is missing, upgrade cplt: %s. gh must be installed in a directory cplt trusts.\n", domain.PkgForInstall().Pick("brew upgrade navikt/tap/cplt", "sudo apt upgrade cplt"))
 	}
 }
 

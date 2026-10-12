@@ -293,6 +293,14 @@ export function StepResult({ os, workflow, onPrev }: { os: OS; workflow: Workflo
             <CodeBlock compact>{currentResult.code}</CodeBlock>
           </Box>
           <BodyShort textColor="subtle" size="small">
+            Logg gh inn utenfor cplt med <code>gh auth login --hostname github.com</code>. OpenCode har egen innlogging
+            via <code>/connect</code>. Oppsett og feilsøking står i{" "}
+            <Link href="/nav-pilot/guider/kom-i-gang#logg-inn" className="text-blue-600">
+              innloggingsguiden
+            </Link>
+            .
+          </BodyShort>
+          <BodyShort textColor="subtle" size="small">
             Oppskriften installerer i dette repoet. Vil du heller ha agenter og skills på tvers av alle repoer, bytt ut{" "}
             <code>install</code>-linja med <code>nav-pilot install --user --all</code>. Den tar ikke med prompts.{" "}
             <Link href="/nav-pilot/guider/installere-og-oppgradere#velg-installasjonssted" className="text-blue-600">

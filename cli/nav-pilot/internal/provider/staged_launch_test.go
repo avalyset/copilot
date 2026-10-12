@@ -346,8 +346,7 @@ func TestStagedCopilotRequiresCplt(t *testing.T) {
 	SetActivePakke(stagedFixturePakke())
 	t.Cleanup(func() { SetActivePakke(nil) })
 
-	// A PATH with a plain `copilot` that is not cplt: the legacy path would
-	// launch it, the staged path must refuse.
+	// A plain copilot on PATH does not satisfy the sandbox requirement.
 	dir := t.TempDir()
 	if err := testhome.WriteExec(filepath.Join(dir, "copilot"), "#!/bin/sh\necho copilot 1.2.3\n"); err != nil {
 		t.Fatalf("writing fake copilot: %v", err)
@@ -396,8 +395,8 @@ func TestStagedCopilotHonorsRestrictiveAuthMode(t *testing.T) {
 	err := LaunchCopilotStaged(
 		domain.ResolvedConfig{Client: "copilot", AskUser: true, CopilotAuthMode: "env_only"},
 		StagedLaunch{Dir: dir, PakkeName: "grillmester", Context: "full"})
-	if err == nil {
-		t.Fatal("staged launch should fail closed for env_only without a token")
+	if err == nil || !strings.Contains(err.Error(), "copilot_auth_mode=env_only") {
+		t.Fatalf("expected env_only refusal, got %v", err)
 	}
 	if _, statErr := os.Stat(marker); statErr == nil {
 		t.Fatal("cplt must not launch for env_only without a token")

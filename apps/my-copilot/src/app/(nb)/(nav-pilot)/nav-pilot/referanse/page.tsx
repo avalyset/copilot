@@ -203,6 +203,15 @@ export default function Referanse() {
             </NextLink>
             .
           </BodyLong>
+          <BodyLong>
+            <code className={code}>copilot_auth_mode</code> filtrerer bare miljøet som nav-pilot gir til cplt. Eksklusiv
+            bruk av én innloggingskilde støttes ikke. cplt kan fjerne eller legge til tokener, og Copilots lagrede
+            innlogging kan fortsatt være tilgjengelig. Se{" "}
+            <NextLink href="/nav-pilot/guider/cplt-feilmeldinger#keyring" className={linkClass}>
+              innlogging og feilsøking
+            </NextLink>
+            .
+          </BodyLong>
           <dl>
             {CONFIG_KEYS.map((k) => (
               <div

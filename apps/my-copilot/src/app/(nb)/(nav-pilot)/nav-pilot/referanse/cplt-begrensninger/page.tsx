@@ -61,7 +61,8 @@ export default function CpltBegrensninger() {
               <code className={code}>sandbox.pass_env</code>.
             </li>
             <li>
-              Linux og WSL: agenten når ikke nøkkelringen, se{" "}
+              Linux og WSL: agenten når ikke nøkkelringen. På Mac stenger cplt også nøkkelringen for Copilot når et
+              token erstatter tilgangen. Se{" "}
               <NextLink href={`${FAQ}#keyring`} className={linkClass}>
                 System vault not available
               </NextLink>

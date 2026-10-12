@@ -160,15 +160,13 @@ var probeClientVersion = func(client string) (string, error) {
 }
 
 // probeLaunchClientVersion probes the binary a non-staged launch is about to
-// run. Which binary that is differs from the staged path, and probing through
-// cplt regardless refused a perfectly valid Tier 1 launch with "cplt not found
-// in PATH" (#815 review): FindCopilotCLI selects the plain `copilot` binary
-// when cplt is absent, and LaunchCopilotResolved then runs it directly.
+// run. FindCopilotCLI can return a plain copilot when cplt is absent, allowing
+// its version to be checked, but LaunchCopilotResolved still requires cplt.
 //
 // So: copilot is probed through whichever binary FindCopilotCLI selects —
 // sandboxed via probeClientVersion when that is cplt, because the launch is
-// sandboxed too, and directly when it is the plain CLI. Every other client is
-// launched under its own name and probed the same way.
+// sandboxed too, and directly when it is the plain CLI. Other clients are probed
+// directly by name; all actual launches require cplt.
 var probeLaunchClientVersion = func(client string) (string, error) {
 	if client != "copilot" {
 		return cachedVersion(client, clientProbeTimeout)

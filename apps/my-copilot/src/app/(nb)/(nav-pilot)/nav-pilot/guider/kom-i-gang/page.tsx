@@ -80,13 +80,47 @@ export default function KomIGang() {
           <BodyLong>
             Agenten pusher og åpner pull requests med gh-innloggingen din. Logg inn én gang, utenfor sandkassen:
           </BodyLong>
-          <CodeBlock compact>{`gh auth login`}</CodeBlock>
+          <CodeBlock compact>{`gh auth login --hostname github.com
+gh auth status --hostname github.com`}</CodeBlock>
           <BodyLong>
-            <strong>OpenCode eller pi på Mac:</strong> gh legger tokenet i nøkkelringen til macOS, og cplt slipper ikke
-            disse klientene til nøkkelringen. Da feiler push og pull requests i sandkassen. Logg inn slik at gh lagrer
-            tokenet i sin egen fil i stedet:
+            Åpner <code className={code}>/login</code> fra nav-pilot ikke nettleseren, eller får du ikke kopiert URL-en?
+            Avslutt agenten og logg gh inn i en vanlig terminal utenfor cplt med kommandoen over. Kontroller kontoen og
+            Copilot-tilgangen, og start nav-pilot på nytt. Velg <strong>No, cancel sign-in</strong> hvis Copilot tilbyr
+            lagring i klartekst. Se{" "}
+            <NextLink href="/nav-pilot/guider/cplt-feilmeldinger#login-nettleser" className={linkClass}>
+              oppskriften når nettleseren ikke åpner eller URL-en ikke kan kopieres
+            </NextLink>
+            .
           </BodyLong>
-          <CodeBlock compact>{`gh auth login --insecure-storage`}</CodeBlock>
+          <BodyLong>
+            På Mac lagrer gh tokenet i nøkkelringen når den er tilgjengelig. Med gh-vakta på henter nyere cplt tokenet
+            før agenten starter, slik at godkjente gh-kommandoer og git over HTTPS kan bruke det. Du trenger ikke velge
+            lagring i klartekst for OpenCode eller pi. Oppgrader cplt hvis du har en eldre versjon.
+          </BodyLong>
+          <BodyLong>
+            Copilot CLI på Mac kan bruke gh-innloggingen selv om du aldri har logget inn i Copilot. Med
+            standardinnstillingene kan cplt sende gh-tokenet som <code className={code}>GH_TOKEN</code> og stenge
+            agentens tilgang til nøkkelringen. Kontoen og tokenet må ha Copilot-tilgang. Kontroller oppsettet:
+          </BodyLong>
+          <CodeBlock compact>{`cplt doctor --agent copilot
+cplt --agent copilot -- -p "Reply with OK only"`}</CodeBlock>
+          <BodyLong>
+            Viser doctor <code className={code}>keychain: denied</code> og at tokenet kommer fra gh, trenger du normalt
+            ikke kjøre <code className={code}>/login</code> i Copilot. cplt henter foreløpig ikke Copilots eget token
+            fra nøkkelringen. Uten et erstatningstoken beholder Copilot nøkkelringtilgangen. cplt beholder også
+            tilgangen når det oppdager at gh og Copilots lagrede konto er forskjellige. Ber Copilot likevel om
+            innlogging, følg feilsøkingen under.
+          </BodyLong>
+          <BodyLong>
+            <NextLink href="/nav-pilot/guider/cplt-feilmeldinger#keyring" className={linkClass}>
+              Feilsøk innlogging og «System vault not available»
+            </NextLink>
+            . Eksporterte tokener kan overstyre den lagrede kontoen. Linux og WSL trenger et eget oppsett for å sende
+            gh-tokenet til Copilot. OpenCode har sin egen innlogging via <code className={code}>/connect</code>.{" "}
+            <code className={code}>nav-pilot auth login</code> gjelder nav-pilots egne funksjoner, som bruksoversikt og
+            undersøkelser. Den logger ikke Copilot eller gh inn. Innloggingen på ki-utvikling.nav.no bruker Nav-kontoen
+            din og er også separat.
+          </BodyLong>
           <BodyLong>
             <strong>Kloner du med SSH</strong> (<code className={code}>git@github.com:…</code>)? cplt stenger{" "}
             <code className={code}>~/.ssh</code>, så push over SSH feiler i sandkassen. Få git til å bruke HTTPS mot

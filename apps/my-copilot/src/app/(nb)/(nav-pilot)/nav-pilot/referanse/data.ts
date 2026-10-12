@@ -186,7 +186,7 @@ export const CONFIG_KEYS = [
     key: "copilot_auth_mode",
     flag: "—",
     values: "auto · env_only · gh_only (standard: auto)",
-    desc: "Hvilken innlogging som når cplt for Copilot. auto begrenser ingenting; env_only krever et token i GH_TOKEN, GITHUB_TOKEN eller COPILOT_GITHUB_TOKEN; gh_only fjerner dem.",
+    desc: "Filtrerer miljøet før cplt starter. auto endrer ingenting; env_only krever et ikke-blankt token i GH_TOKEN, GITHUB_TOKEN eller COPILOT_GITHUB_TOKEN; gh_only fjerner variablene. Ingen av dem garanterer hvilken innlogging cplt eller Copilot bruker.",
   },
 ];
 

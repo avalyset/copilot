@@ -6,6 +6,7 @@
 [!pty] skip 'no pseudo-terminal here (/dev/ptmx will not open)'
 
 fake-bin cplt copilot
+env GH_CONFIG_DIR=$WORK/gh
 
 mkdir plattform/skills repo
 cd plattform
@@ -45,6 +46,9 @@ stdout 'Launching Copilot Sandbox \(cplt\) with agent nav-pilot'
 stdout 'Session model: '
 
 -- empty.txt --
+-- gh/hosts.yml --
+github.com:
+    user: e2e
 -- plattform/.nav-pilot/agentpakke.json --
 {"contractVersion":"1","name":"plattform","description":"plattform","layout":{"agents":"agents","skills":"skills"},"clients":{"copilot":{"primaryAgents":["grillmester"]}}}
 -- plattform/agents/grillmester.agent.md --

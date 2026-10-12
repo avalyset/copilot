@@ -710,7 +710,7 @@ Nøklene, med flagget som overstyrer dem for én kjøring. Tabellen lages fra ko
 | `hook_injection_note` | — | true · false (standard: true) | Sett en merknad foran verktøyresultater som ser ut som instrukser til modellen («ignore previous instructions», rollemarkører), så modellen behandler dem som data. Stopper ingenting. |
 | `hook_action_check` | — | off · log (standard: log) | Spør den lokale decide-modellen om en risikabel skallkommando (kubectl, terraform apply, rm -r, git push --force og lignende) står i forhold til formålet. log lagrer svaret og stopper ingenting. Krever lokal modell. |
 | `mcp_hosts` | — | ask · off (standard: ask) | Om nav-pilot spør før den åpner cplt for hostene MCP-serverne dine trenger. Hostene hentes fra Navs MCP-register. ask spør én gang per sett, off spør aldri. |
-| `copilot_auth_mode` | — | auto · env_only · gh_only (standard: auto) | Hvilken innlogging som når cplt for Copilot. auto begrenser ingenting; env_only krever et token i GH_TOKEN, GITHUB_TOKEN eller COPILOT_GITHUB_TOKEN; gh_only fjerner dem. |
+| `copilot_auth_mode` | — | auto · env_only · gh_only (standard: auto) | Filtrerer miljøet før cplt starter. auto endrer ingenting; env_only krever et ikke-blankt token i GH_TOKEN, GITHUB_TOKEN eller COPILOT_GITHUB_TOKEN; gh_only fjerner variablene. Ingen av dem garanterer hvilken innlogging cplt eller Copilot bruker. |
 <!-- config-keys:end -->
 <!-- prettier-ignore-end -->
 

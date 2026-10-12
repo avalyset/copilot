@@ -292,10 +292,8 @@ func copilotResolvedFlags(resolved domain.ResolvedConfig) []string {
 // If user-scope instructions exist, it sets COPILOT_CUSTOM_INSTRUCTIONS_DIRS
 // to ~/.copilot/.github/instructions so cplt picks up the files there.
 //
-// When launched via cplt, CopilotAuthMode constrains where cplt may get the
-// Copilot token from: env_only aborts the launch unless one is already in the
-// environment, gh_only removes the token variables so cplt must use
-// `gh auth token`. See applyCopilotAuthMode.
+// CopilotAuthMode filters the environment handed to cplt. It does not enforce
+// the credential source cplt or Copilot uses. See applyCopilotAuthMode.
 func LaunchCopilotResolved(resolved domain.ResolvedConfig) error {
 	// Local inference. The one branch on this path, and it used to be a
 	// refusal, on the belief that the Copilot CLI only ever resolves models
@@ -385,11 +383,12 @@ func LaunchCopilotResolved(resolved domain.ResolvedConfig) error {
 		fmt.Printf("Launching %s with agent %s...\n\n", domain.Bold(displayName), domain.Bold(banner))
 	}
 
-	// cplt resolves the Copilot token itself; copilot_auth_mode only constrains
-	// which source it may use, and can refuse the launch outright.
+	// Check the environment before handing it to cplt; cplt can still supply
+	// credentials of its own.
 	if env, err = applyCopilotAuthMode(env, resolved.CopilotAuthMode); err != nil {
 		return err
 	}
+	ReportCopilotAuthRecovery(os.Stderr, env, resolved.CopilotAuthMode)
 
 	cmd := exec.Command(cliPath, args...)
 	cmd.Stdin = os.Stdin
@@ -538,29 +537,24 @@ func copilotLaunchArgs(cliName string, resolved domain.ResolvedConfig, tty bool,
 	return withCpltConfirmation(args, tty)
 }
 
-// ghTokenVars are the environment variables cplt recognises as carrying a
-// GitHub token, in the precedence order it applies.
+// ghTokenVars are the token names recognised by cplt. This filter does not
+// choose between them; Copilot and cplt's credential paths have different orders.
 var ghTokenVars = []string{"GH_TOKEN", "GITHUB_TOKEN", "COPILOT_GITHUB_TOKEN"}
 
-// applyCopilotAuthMode enforces copilot_auth_mode on the environment handed to
-// cplt.
+// applyCopilotAuthMode filters the environment handed to cplt.
 //
-// nav-pilot does not extract or inject a token. With cplt's gh guard on — which
-// since cplt#335 is every preset except permissive and full-trust, `standard`
-// included, so it is the case by default rather than only under the `strict`
-// nav-pilot recommends — cplt uses an inherited
-// GH_TOKEN/GITHUB_TOKEN/COPILOT_GITHUB_TOKEN when one is present and
-// otherwise runs `gh auth token --hostname github.com` in the unsandboxed
-// parent, handing the result to the agent over a one-time 0600 file rather than
-// the environment. With the gh guard off, cplt does none of that and Copilot
-// authenticates on its own. Either way this function only decides which sources
-// reach cplt, and refuses to launch when the mode asks for one that is absent.
+// nav-pilot does not extract or inject a Copilot token. cplt can forward exported
+// tokens, inject a host gh token through macOS Keychain substitution independently
+// of the gh guard, or retain access to Copilot's stored login. The guard's
+// serve-once token file is a separate channel, not the only credential handoff.
 //
 //   - auto:     no constraint (default).
-//   - env_only: a token must already be in the environment; the launch aborts
-//     if not. Enforced here, so it holds whatever cplt is configured to do.
-//   - gh_only:  the token variables are removed from the child environment, so
-//     no env token reaches the sandbox. What cplt does then is its own call.
+//   - env_only: requires a non-blank token in the environment handed to cplt.
+//     It cannot prevent cplt denying that variable or using another credential.
+//   - gh_only: strips those variables before cplt starts. Exclusive gh-source
+//     enforcement is unsupported by the current cplt contract. Keep this legacy
+//     filter for compatibility; it does not disable Copilot's stored login or
+//     prevent cplt injecting a token into the sandbox environment.
 //
 // An empty authMode is treated as "auto": every real launch resolves the mode
 // through resolve() (default "auto"), but a directly constructed ResolvedConfig
@@ -573,7 +567,7 @@ func applyCopilotAuthMode(env []string, authMode string) ([]string, error) {
 	case "env_only":
 		if !hasEnvToken(env) {
 			return env, fmt.Errorf(
-				"copilot_auth_mode=env_only: none of %s is set; launch aborted",
+				"copilot_auth_mode=env_only: none of %s is set; launch aborted. Export a Copilot token, or run nav-pilot config set copilot_auth_mode auto to use stored login",
 				strings.Join(ghTokenVars, "/"))
 		}
 		return env, nil

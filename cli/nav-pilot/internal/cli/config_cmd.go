@@ -284,7 +284,7 @@ var configKeyDefs = []configKeyDef{
 	{
 		name:        "copilot_auth_mode",
 		kind:        keyKindString,
-		description: "Which auth source reaches cplt for Copilot. nav-pilot never extracts a token itself. auto constrains nothing; env_only requires GH_TOKEN/GITHUB_TOKEN/COPILOT_GITHUB_TOKEN to hold a value and aborts the launch if none does; gh_only removes those variables so no env token reaches the sandbox.",
+		description: "Filters the environment handed to cplt for Copilot. auto leaves it unchanged; env_only requires a non-blank GH_TOKEN/GITHUB_TOKEN/COPILOT_GITHUB_TOKEN or aborts; gh_only strips those variables before cplt starts. Exclusive auth-source enforcement is unsupported: cplt can deny or inject tokens, and Copilot's stored login remains available. nav-pilot never extracts a Copilot token itself.",
 		allowed:     validCopilotAuthModes,
 		defaultVal:  "auto",
 		flag:        "",
@@ -513,17 +513,19 @@ client = "copilot"
 # mcp_hosts = "ask"
 
 # ── cplt auth ──────────────────────────────────────────────────────────────────
-# nav-pilot never extracts a Copilot token itself. With cplt's gh guard on — the
-# default since cplt#335, not only under sandbox.preset = strict — cplt uses an
-# inherited
-# GH_TOKEN/GITHUB_TOKEN/COPILOT_GITHUB_TOKEN if one is set and otherwise runs
-# "gh auth token" outside the sandbox; with it off, Copilot authenticates on its
-# own. copilot_auth_mode decides which sources reach cplt.
+# nav-pilot never extracts a Copilot token itself. This key filters only the
+# environment handed to cplt, not the credential source used inside the sandbox.
+# cplt can inject a host gh token into the environment through macOS Keychain
+# substitution even with the gh guard off. The guard's serve-once token file is
+# a separate channel. Copilot's stored login can also remain available.
 #
 # copilot_auth_mode:
 #   auto         : no constraint (default)
-#   env_only     : a token must already be in the environment, abort the launch if not
-#   gh_only      : strip the token variables so no env token reaches the sandbox
+#   env_only     : require a non-blank GH_TOKEN/GITHUB_TOKEN/COPILOT_GITHUB_TOKEN
+#   gh_only      : strip those variables before cplt starts (legacy filter)
+# Exclusive env-only or gh-only source enforcement is unsupported by the current
+# cplt contract. env_only cannot prevent cplt denying the exported token;
+# gh_only cannot disable Copilot's stored login or prevent cplt injecting a token.
 # Allowed: auto, env_only, gh_only — Default: auto
 # copilot_auth_mode = "auto"
 `
