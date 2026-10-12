@@ -22,6 +22,7 @@ import (
 
 	"github.com/charmbracelet/huh"
 
+	"github.com/navikt/copilot/cli/nav-pilot/internal/agentpakke"
 	telemetrypkg "github.com/navikt/copilot/cli/nav-pilot/internal/telemetry"
 )
 
@@ -56,13 +57,32 @@ func surveyAskGap() time.Duration {
 }
 
 type surveyDef struct {
-	ID        string           `json:"id"`
-	Nudge     string           `json:"nudge,omitempty"` // calm (default), start or off
-	Title     string           `json:"title"`
-	Intro     string           `json:"intro,omitempty"`
-	Starts    string           `json:"starts"`
-	Ends      string           `json:"ends"`
-	Questions []surveyQuestion `json:"questions"`
+	ID     string `json:"id"`
+	Nudge  string `json:"nudge,omitempty"` // calm (default), start or off
+	Title  string `json:"title"`
+	Intro  string `json:"intro,omitempty"`
+	Starts string `json:"starts"`
+	Ends   string `json:"ends"`
+	// MinCLIVersion is the oldest nav-pilot release that gets the survey,
+	// YYYY.MM.DD or YYYY.MM.DD-HHMMSS. copilot-survey enforces it for the
+	// active list; a preview reads the file itself, so it checks here.
+	MinCLIVersion string           `json:"min_cli_version,omitempty"`
+	Questions     []surveyQuestion `json:"questions"`
+}
+
+// needsNewerCLI reports whether min_cli_version is above this build. A dev
+// build is never too old, as for agentpakker; a floor that does not parse
+// fails closed.
+func (s surveyDef) needsNewerCLI() bool {
+	if s.MinCLIVersion == "" {
+		return false
+	}
+	floor := s.MinCLIVersion
+	if !strings.Contains(floor, "-") {
+		floor += "-000000"
+	}
+	older, err := agentpakke.RunningOlderThan(floor)
+	return err != nil || older
 }
 
 // surveyQuestion is the part of copilot-survey's question format nav-pilot
@@ -880,6 +900,50 @@ func postSurveyOnce(base, id string, payload []byte, token string) (int, error) 
 		return resp.StatusCode, errors.New(body.detail())
 	}
 	return resp.StatusCode, nil
+}
+
+// cmdSurveyPreview is nav-pilot survey preview <id>: the survey as committed
+// on main, also before it opens, to try the questions. It never sends the
+// answers, so a preview cannot end up in the data.
+func cmdSurveyPreview(id string) error {
+	if !regexp.MustCompile(`^[a-z0-9-]{1,64}$`).MatchString(id) {
+		return fmt.Errorf("ugyldig id: %q", id)
+	}
+	if !isInteractive() {
+		return errors.New("forhåndsvisning trenger en terminal")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://raw.githubusercontent.com/navikt/copilot/main/apps/copilot-survey/surveys/"+id+".json", nil)
+	if err != nil {
+		return err
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("fant ikke undersøkelsen %s (%s)", id, resp.Status)
+	}
+	var s surveyDef
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 256<<10)).Decode(&s); err != nil {
+		return err
+	}
+	if s.needsNewerCLI() || !s.renderable() {
+		return fmt.Errorf("%s krever en nyere nav-pilot: %s", s.Title, bold("nav-pilot upgrade"))
+	}
+	fmt.Printf("\n%s (%d spørsmål, åpner %s)\n", bold(s.Title), s.count(), s.Starts)
+	fmt.Println(yellow("Forhåndsvisning: svarene sendes ikke."))
+	fmt.Println()
+	answers, ok := runSurveyForm(s)
+	if !ok {
+		return cancelledError{}
+	}
+	out, _ := json.MarshalIndent(answers, "", "  ")
+	fmt.Println(string(out))
+	fmt.Println(dim("Forhåndsvisning: ikke sendt."))
+	return nil
 }
 
 func surveyErrDetail(err error) string {
