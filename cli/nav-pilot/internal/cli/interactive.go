@@ -1011,7 +1011,7 @@ func installedAgents(state *StateFile) []string {
 	return agents
 }
 
-func launchClient(resolved ResolvedConfig) error {
+func launchClient(resolved ResolvedConfig) (err error) {
 	if err := removeUnusableRtkHook(resolved.Client); err != nil {
 		return fmt.Errorf("removing unusable rtk hook: %w", err)
 	}
@@ -1024,8 +1024,16 @@ func launchClient(resolved ResolvedConfig) error {
 			id, add = "", nil
 		}
 		resolved.ExtraArgs = append(slices.Clone(resolved.ExtraArgs), add...)
-		if id != "" {
-			copilotSessionIDs = append(copilotSessionIDs, id)
+		// Counted only once the client ran, exit status aside: a launch
+		// refused before it starts has no session of its own, and a resumed
+		// session without its baseline would count its history (#1639).
+		if id != "" && baselineCopilotSession(hookStateDir(), id) {
+			defer func() {
+				var exit *exec.ExitError
+				if err == nil || errors.As(err, &exit) {
+					copilotSessionIDs = append(copilotSessionIDs, id)
+				}
+			}()
 		}
 	}
 	defer func() { stopSourceRefresh() }()
