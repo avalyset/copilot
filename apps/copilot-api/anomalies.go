@@ -147,7 +147,7 @@ func (bq *BigQueryClient) GetCostAnomalies(ctx context.Context) ([]Anomaly, erro
 
 	var in anomalyInput
 	q := bq.client.Query(fmt.Sprintf(`SELECT FORMAT_DATE('%%F',day) day,SUM(gross_amount) gross FROM %s
-WHERE LOWER(scope_id)='nav' AND gross_quantity>0 AND day>=DATE(@from) GROUP BY day ORDER BY day`, daily))
+WHERE LOWER(scope_id)='nav' AND product='Copilot' AND gross_quantity>0 AND day>=DATE(@from) GROUP BY day ORDER BY day`, daily))
 	q.Parameters = []bigquery.QueryParameter{{Name: "from", Value: from}}
 	it, err := q.Read(ctx)
 	if err != nil {
@@ -158,7 +158,7 @@ WHERE LOWER(scope_id)='nav' AND gross_quantity>0 AND day>=DATE(@from) GROUP BY d
 	}
 
 	q = bq.client.Query(fmt.Sprintf(`WITH m AS (
- SELECT day,REGEXP_REPLACE(model,r'^Auto: ','') model,SUM(gross_amount) gross FROM %s WHERE LOWER(scope_id)='nav' AND gross_quantity>0 GROUP BY 1,2
+ SELECT day,REGEXP_REPLACE(model,r'^Auto: ','') model,SUM(gross_amount) gross FROM %s WHERE LOWER(scope_id)='nav' AND product='Copilot' AND gross_quantity>0 GROUP BY 1,2
 ) SELECT model,FORMAT_DATE('%%F',MIN(day)) first_day,ARRAY_AGG(gross ORDER BY day LIMIT 1)[OFFSET(0)] gross
 FROM m WHERE gross>@minUSD GROUP BY model HAVING MIN(day)>=DATE(@from)`, daily))
 	q.Parameters = []bigquery.QueryParameter{{Name: "from", Value: from}, {Name: "minUSD", Value: newModelMinUSD}}
@@ -185,7 +185,7 @@ FROM m WHERE gross>@minUSD GROUP BY model HAVING MIN(day)>=DATE(@from)`, daily))
 		runs = fmt.Sprintf("(SELECT COUNT(*)>0 FROM %s WHERE month=DATE(@prev) AND scope_id='nav' AND status='complete')",
 			bq.tableRef(bq.metricsDataset, "billing_user_monthly_runs"))
 	}
-	q = bq.client.Query(fmt.Sprintf(`SELECT IFNULL(FORMAT_DATE('%%F',MIN(day)),'') first_day,%s complete FROM %s WHERE LOWER(scope_id)='nav'`, runs, daily))
+	q = bq.client.Query(fmt.Sprintf(`SELECT IFNULL(FORMAT_DATE('%%F',MIN(day)),'') first_day,%s complete FROM %s WHERE LOWER(scope_id)='nav' AND product='Copilot'`, runs, daily))
 	q.Parameters = []bigquery.QueryParameter{{Name: "prev", Value: prev}}
 	if it, err = q.Read(ctx); err != nil {
 		return nil, fmt.Errorf("read billing coverage: %w", err)
