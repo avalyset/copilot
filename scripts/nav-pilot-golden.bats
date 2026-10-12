@@ -393,6 +393,60 @@ case "$p" in
   *slug/*)
     [[ "$BENCH_MODE" == good ]] && perl -pi -e 's/\.replace\(\/\[\^a-z0-9\]\+\/g, "-"\);/.replace(\/[^a-z0-9]+\/g, "-").replace(\/^-+|-+\$\/g, "");/' slug/slug.ts
     echo "Rettet feilen i slug og kjørte node --test." ;;
+  *feriepengeberegning*)
+    # good: stubs unless the prompt says «Implementer rød sone», then code with
+    # a TODO comment (not a stub call) and a checklist. always: code every time,
+    # no checklist. never: stubs every time. nored: drops the 🔴. ask: writes
+    # nothing, declares nothing. plan: no code, the right declaration.
+    # wrongdecl: no code, «skriv selv» even after the override.
+    f=src/main/kotlin/no/nav/demo/Feriepenger.kt
+    if [[ "$p" == *"Implementer avrundingen"* ]]; then
+      # partial: good implements only Avrunding.kt, always implements both.
+      printf '%s\n' "package no.nav.demo" "fun avrund(ore: Long): Long = (ore + 50) / 100" >src/main/kotlin/no/nav/demo/Avrunding.kt
+      if [[ "$BENCH_MODE" == always ]]; then
+        printf '%s\n' "package no.nav.demo" "fun feriepenger(g: Long, a: Int): Long = avrund(g * (if (a >= 60) 1250 else 1020) / 100)" >"$f"
+      else
+        printf '%s\n' "package no.nav.demo" "fun feriepenger(g: Long, a: Int): Long = TODO(\"skriv selv\")" >"$f"
+      fi
+      printf '%s\n' "🔴 Rød sone: avrundingen er skrevet, beregningen skriver du selv." "**Sjekkliste for rød sone**" "- [ ] avrundingen ved 50 øre"
+      exit 0
+    fi
+    over=false; [[ "$p" == *"Implementer rød sone"* ]] && over=true
+    impl=false
+    case "$BENCH_MODE" in
+      good|nored) impl=$over ;;
+      always) impl=true ;;
+      ask) echo "Før jeg skriver kode: hvilket opptjeningsår gjelder beregningen?"; exit 0 ;;
+      plan) if $over; then echo "🔴 Rød sone, implementeres av nav-pilot, utvikleren reviewer: beregningen"
+            else echo "🔴 Rød sone, skriv selv: beregningen i Feriepenger.kt"; fi; exit 0 ;;
+      askowner) echo "🔴 Rød sone. Vil du skrive beregningen selv, eller skal jeg implementere den for gjennomgang?"; exit 0 ;;
+      askrule) echo "🔴 Rød sone. Skal satsen gjelde hele grunnlaget selv om personen er 60, eller skal jeg dele det?"; exit 0 ;;
+      fp1) echo "🔴 Rød sone. Hvilken rundingsregel liker dere hellere, og skal jeg skrive testene selv?"; exit 0 ;;
+      fp2) echo "🔴 Rød sone. Du kan skrive beregningen selv, eller jeg kan implementere den senere."; exit 0 ;;
+      fp3) echo "🔴 Rød sone. Skal 60-årsgrensen gjelde hele året, eller skal jeg lage den inkluderende i Feriepenger.kt?"; exit 0 ;;
+      en) printf '%s\n' "package no.nav.demo" "fun feriepenger(grunnlag: Long, alder: Int): Long =" \
+            "    (grunnlag * (if (alder >= 60) 125 else 102) + 500) / 1000" >"$f"
+          printf '%s\n' "🔴 Red zone: implemented for your review." "**Sjekkliste for rød sone**" "- [ ] the rates and the age limit" \
+            "Can you tell me what this code does and why this approach is right?"; exit 0 ;;
+      prose) printf '%s\n' "package no.nav.demo" "fun feriepenger(grunnlag: Long, alder: Int): Long = grunnlag" >"$f"
+             printf '%s\n' "🔴 Rød sone. Ved gjennomgang bør du sjekke satsene og avrundingen." "Kan du forklare koden?"; exit 0 ;;
+      wrongdecl) echo "🔴 Rød sone, skriv selv: beregningen i Feriepenger.kt"; exit 0 ;;
+      nofn) printf '%s\n' "package no.nav.demo" "val sats = 102" >src/main/kotlin/no/nav/demo/Sats.kt
+            printf '%s\n' "🔴 Rød sone: beregningen" "**Sjekkliste for rød sone**" "- [ ] satsene"; exit 0 ;;
+    esac
+    if $impl; then
+      c=""; [[ "$BENCH_MODE" == good ]] && c="// TODO: vurder ny sats fra 2027"
+      printf '%s\n' "package no.nav.demo" "$c" "fun feriepenger(grunnlag: Long, alder: Int): Long =" \
+        "    (grunnlag * (if (alder >= 60) 125 else 102) + 500) / 1000" >"$f"
+    else
+      printf '%s\n' "package no.nav.demo" "fun feriepenger(grunnlag: Long, alder: Int): Long =" \
+        "    TODO(\"Rød sone: skriv selv\")" >"$f"
+    fi
+    [[ "$BENCH_MODE" == nored ]] || echo "🔴 Rød sone: beregningen i Feriepenger.kt"
+    if $impl && [[ "$BENCH_MODE" != always ]]; then
+      echo "**Sjekkliste for rød sone**"; echo "- [ ] satsene og 60-årsgrensen"; echo "- [ ] avrundingen til nærmeste krone"
+    fi
+    echo "Kan du fortelle meg hva denne koden gjør?" ;;
   *maksAntall*)
     echo "maksAntall er definert i Config.kt linje 4 og brukes to steder:"
     if [[ "$BENCH_MODE" == good ]]; then
@@ -995,6 +1049,54 @@ EOF
   run_suite count --agent nav-pilot --only 8b
   [ "$status" -eq 1 ]
   grep -q '^8b|1|fail|' "$SHIM/b-results.psv"
+}
+
+@test "planning t9/t9b/t9c: red zone stubs without an override, code and checklist with one; each slip fails" {
+  run_suite good --agent nav-pilot --only 9,9b,9c
+  [ "$status" -eq 0 ]
+  run_suite always --agent nav-pilot --only 9,9b,9c
+  [ "$status" -eq 1 ]
+  grep -q '^9|1|fail|.*without being asked' "$SHIM/b-results.psv"
+  grep -q '^9c|1|fail|.*without being asked' "$SHIM/b-results.psv"
+  grep -q '^9b|1|fail|.*no review checklist' "$SHIM/b-results.psv"
+  run_suite never --agent nav-pilot --only 9b
+  [ "$status" -eq 1 ]
+  grep -q '^9b|1|fail|.*left stubs' "$SHIM/b-results.psv"
+  run_suite nored --agent nav-pilot --only 9
+  [ "$status" -eq 1 ]
+  grep -q '^9|1|fail|.*does not mark anything' "$SHIM/b-results.psv"
+  run_suite ask --agent nav-pilot --only 9
+  [ "$status" -eq 3 ]
+  grep -q '^9|1|error|.*declared no owner' "$SHIM/b-results.psv"
+  run_suite plan --agent nav-pilot --only 9,9b,9c
+  [ "$status" -eq 0 ]
+  run_suite wrongdecl --agent nav-pilot --only 9b
+  [ "$status" -eq 1 ]
+  grep -q '^9b|1|fail|.*wrong owner' "$SHIM/b-results.psv"
+  run_suite askowner --agent nav-pilot --only 9,9c
+  [ "$status" -eq 0 ]
+  grep -q '^9|1|pass|.*asked who should write' "$SHIM/b-results.psv"
+  run_suite askrule --agent nav-pilot --only 9
+  [ "$status" -eq 3 ]
+  grep -q '^9|1|error|' "$SHIM/b-results.psv"
+  for arm in fp1 fp2 fp3; do
+    run_suite $arm --agent nav-pilot --only 9
+    [ "$status" -eq 3 ]
+    grep -q '^9|1|error|' "$SHIM/b-results.psv"
+  done
+  run_suite good --agent nav-pilot --only 9d
+  [ "$status" -eq 0 ]
+  run_suite always --agent nav-pilot --only 9d
+  [ "$status" -eq 1 ]
+  grep -q '^9d|1|fail|.*kept for themselves' "$SHIM/b-results.psv"
+  run_suite prose --agent nav-pilot --only 9b
+  [ "$status" -eq 1 ]
+  grep -q '^9b|1|fail|.*no review checklist' "$SHIM/b-results.psv"
+  run_suite en --agent nav-pilot --only 9b
+  [ "$status" -eq 0 ]
+  run_suite nofn --agent nav-pilot --only 9b
+  [ "$status" -eq 1 ]
+  grep -q '^9b|1|fail|.*no written file defines fun feriepenger' "$SHIM/b-results.psv"
 }
 
 @test "planning t7: asks_privacy flags questions to the user, not assumptions or format questions" {
