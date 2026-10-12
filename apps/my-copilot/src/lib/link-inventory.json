@@ -1451,6 +1451,7 @@
         "apps/my-copilot/src/app/(nb)/(nav-pilot)/nav-pilot/klienter/page.tsx",
         "apps/my-copilot/src/app/(nb)/nav-pilot/klienter/page.tsx"
       ],
+      "innstillinger": ["apps/my-copilot/src/app/(nb)/(nav-pilot)/nav-pilot/klienter/page.tsx"],
       "kjente-hull": [
         "apps/my-copilot/src/app/(nb)/(nav-pilot)/nav-pilot/klienter/page.tsx",
         "apps/my-copilot/src/app/(nb)/nav-pilot/klienter/page.tsx"
