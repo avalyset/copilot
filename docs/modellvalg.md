@@ -76,6 +76,7 @@ Vi kjørte to batcher med golden-harnesset på Copilot CLI 1.0.90-5, med fem kj�
 - **Low holder for `@code-review`.** Opus 5.5 fant alle plantede feil på riktig linje i ti av ti gjennomganger på alle tre nivåer. Medianen var 23,9 credits på Low, 30,0 på Medium og 38,1 på High. Dette er den nye målingen som rettelsen over ventet på.
 - **Bruk ikke High for `@nav-pilot`.** GPT-6 Sol High stoppet ikke etter fase 1 i to av fem kjøringer og brukte 70,7 credits. På Low stoppet den i fem av fem for 28,9 credits.
 - **GPT-6 Sol er fortsatt standard for `@nav-pilot`.** GPT-6.1 Sol High og GPT-6 Astra skrev de åpne punktene i fase 1 som påstander, ikke som spørsmål, og besto test 2 i null av fem kjøringer. GPT-6.1 Sol Low besto i to av fem. Astra kostet i tillegg fem til seks ganger så mye som Sol-modellene: 154 credits per planleggingskjøring mot 28,9 for GPT-6 Sol Low.
+  - _Tillegg 12. oktober 2026:_ Sjekken for test 2 teller nå åpne punkter etter innhold, ikke bare spørsmålstegn ([#1614](https://github.com/navikt/copilot/pull/1614)). Med den besto GPT-6.1 Sol Low test 2 i fem av fem kjøringer (kjørt 11., vurdert 12. oktober, [2026-10-12-sol61-rerun](golden-baselines/2026-10-12-sol61-rerun/)). Transkriptene fra 30. september ble ikke tatt vare på, så resultatet over kan ikke regnes om.
 - **Alle modellene skrev «AI» i norsk tekst.** Sonnet 5.5 gjorde det i tre av fem kjøringer, GPT-6.1 Sol i fem av fem og Astra i fire av fem. `@forfatter` har derfor fått en egen regel om å skrive «KI».
 
 ### GPT-6.1 Sol spør ikke i fase 1 (30. september 2026)
@@ -83,6 +84,8 @@ Vi kjørte to batcher med golden-harnesset på Copilot CLI 1.0.90-5, med fem kj�
 I batch 1 stoppet GPT-6.1 Sol High riktig etter fase 1 i fem av fem kjøringer og endret ingen filer. Men den skrev de åpne punktene, som personvern og tilgang, som en nummerert liste med påstander og ikke som spørsmål. Derfor feilet test 2, som teller spørsmål, og test 4 kom aldri til sin andre tur. Agentfila ber om spørsmål i fase 1 («Ask questions … All relevant blind spots raised as questions»). GPT-6.1 Sol Low gjorde det samme i test 2 i tre av fem kjøringer.
 
 Vi har ikke løsnet sjekken. Tallene per transkript står i [t2-questions.psv](golden-baselines/2026-09-30-batch1/t2-questions.psv), og resultatene for High i [planning-gpt-6.1-sol-high-results.psv](golden-baselines/2026-09-30-batch1/planning-gpt-6.1-sol-high-results.psv).
+
+_Tillegg 12. oktober 2026:_ Sjekken er nå endret, se [Ny kjøring av GPT-6.1 Sol](#ny-kjøring-av-gpt-61-sol-12-oktober-2026). En liste med påstander under en innledning som «Følgende er uavklart:» teller nå som åpne punkter.
 
 ## Målinger 1. oktober 2026
 
@@ -121,6 +124,7 @@ Batch 4 sammenligner GPT-6.1 Sol og Claude Opus 5.5 med GPT-6 Sol som standardmo
 - **GPT-6.1 Sol anbefales som personlig standard** bare hvis den ikke er dårligere enn kontrollen på koding, kodegjennomgang, norsk og research.
 - **Claude Opus 5.5 Low** må være like god som kontrollen på alt. Kostnaden dokumenteres uansett.
 - **Sjekken for test 2 løsnes ikke.** Viser transkriptene at testrepoet nå svarer på personvern, skrives det ned før vurderingen og legges fram for eieren.
+  - _Tillegg 12. oktober 2026:_ Sjekken teller nå åpne punkter etter innhold ([#1614](https://github.com/navikt/copilot/pull/1614)). Eieren vurderte at den var for streng: Ved en ny kjøring stoppet GPT-6.1 Sol Low riktig etter fase 1 hver gang, men skrev punktene som en liste med påstander. Kriteriet over sto da målingen ble gjort, og står her uendret.
 
 ### Resultater
 
@@ -139,9 +143,26 @@ Rådata ligger i [2026-10-06-batch4](golden-baselines/2026-10-06-batch4/), og fe
 | Research             | 20/20, 13,0 credits  | 20/20, 14,7 credits | 20/20, 35,8 credits |
 
 - **GPT-6.1 Sol erstatter ikke GPT-6 Sol på `@nav-pilot`.** Den besto test 2 i to av fem kjøringer. I de tre andre listet den de åpne punktene som påstander uten spørsmålstegn. Testrepoet svarer ikke på personvern, så sjekken er ikke løsnet. Test 3 var også svakere (4/5). Test 4 ble ikke vurdert i to kjøringer fordi test 2 feilet. Kontrollens 4/5 på test 4 er én kjøring der testoppsettet ikke fant noen plan for fase 2, ikke en modellfeil.
+  - _Tillegg 12. oktober 2026:_ GPT-6 Sol beholder `@nav-pilot`. Med de rettede sjekkene besto GPT-6.1 Sol test 2 i fem av fem kjøringer ([#1614](https://github.com/navikt/copilot/pull/1614), [#1615](https://github.com/navikt/copilot/pull/1615)), men medianen var 6,89 credits per kjøring mot 6,77 for GPT-6 Sol, omtrent 2 prosent mer, og test 3, 4, 5, 7 og 7b er ikke kjørt på nytt.
 - **GPT-6.1 Sol anbefales ikke som personlig standard.** Den holdt på koding, norsk og research, men ikke på kodegjennomgang. I Kotlin-fila nevnte den ikke det svelgede unntaket ved riktig linje i åtte av ti kjøringer. Kontrollen bommet på det én gang.
+  - _Tillegg 12. oktober 2026:_ GPT-6.1 Sol er nå anbefalt personlig standard. I en ny kjøring fant den det svelgede unntaket i fem av fem på rv1 og rv2 med de rettede sjekkene, med en median på 5,95 credits per kjøring mot 7,50 for GPT-6 Sol ([#1614](https://github.com/navikt/copilot/pull/1614), [#1615](https://github.com/navikt/copilot/pull/1615)). Batch 4 kan ikke regnes om, fordi transkriptene ikke ble tatt vare på.
 - **Claude Opus 5.5 Low var minst like god som kontrollen på alle målte sjekker**, men kostet 1,6 til 2,8 ganger så mye per kjøring. Dyrest er den på research: 35,8 credits mot 13,0.
 - **Test 7 og 7b og OpenCode-armen ble ikke kjørt.** Testpakkene brukte 2 197 credits, mot et anslag på 1 909. Medregnet 66 credits på testkjøringer på forhånd ble det 2 263. De gjenstående kjøringene ville tatt forbruket over grensen på 2 500 credits (anslaget pluss 25 prosent). Eieren satte denne stoppregelen da målingen startet. Den er ikke en del av kriteriene over. Resultatene for test 7 og 7b kan ikke endre utfallet for GPT-6.1 Sol, som allerede feiler på test 2.
+
+### Ny kjøring av GPT-6.1 Sol (12. oktober 2026)
+
+Vi kjørte test 2 og kodegjennomgangen rv1 og rv2 på nytt med GPT-6.1 Sol Low og GPT-6 Sol Low, fem kjøringer per arm i Copilot CLI. Testene ble kjørt 11. oktober og vurdert 12. oktober. Rådata ligger i [2026-10-12-sol61-rerun](golden-baselines/2026-10-12-sol61-rerun/). Med de gamle sjekkene feilet GPT-6.1 Sol sju kjøringer. Alle sju ble lest for hånd, og ingen var en reell bom: Modellen stoppet riktig og fant det svelgede unntaket, men skrev det på en måte sjekkene ikke kjente igjen. [#1614](https://github.com/navikt/copilot/pull/1614) rettet sjekkene, og [#1615](https://github.com/navikt/copilot/pull/1615) har rådata og resultatene regnet om. Tabellen gjelder personaen slik den er i repoet. Et forsøk med en ekstra linje i personaen er beskrevet i README-en der og er ikke med her.
+
+| Arm                                  | GPT-6.1 Sol Low | GPT-6 Sol Low |
+| ------------------------------------ | --------------- | ------------- |
+| t2                                   | 5/5 (før: 3/5)  | 5/5           |
+| rv1 og rv2                           | 5/5 (før: 2/5)  | 5/5           |
+| Credits, t2, median per kjøring      | 6,89            | 6,77          |
+| Credits, rv1+rv2, median per kjøring | 5,95            | 7,50          |
+
+- **GPT-6.1 Sol blir anbefalt personlig standard.** Den er like god som GPT-6 Sol på koding, norsk og research, og med de rettede sjekkene også på t2 og rv1–rv2. På rv1–rv2 er den billigere.
+- **GPT-6 Sol beholder `@nav-pilot`.** Medianen for GPT-6.1 Sol på test 2 var omtrent 2 prosent høyere (6,89 mot 6,77 credits), og test 3, 4, 5, 7 og 7b er ikke kjørt på nytt.
+- **Resultatene fra batch 4 og fra 7. oktober kan ikke regnes om.** Transkriptene ble ikke tatt vare på. Resultatene i batch 4-tabellen og 24/40 på kodegjennomgang står derfor slik de ble målt.
 
 ### Omregnet til listepris
 
@@ -210,25 +231,27 @@ Vurdering mot kriteriene:
 - **GPT-6.1 Sol Low er ikke en akseptabel reservemodell.** Den feiler krav 1 (rv5 3/10) og krav 3 (median 2, etter klassifisering 1). Krav 2 holder (9/10).
 - **Krav 4 kan ikke avgjøres.** Det bygger på rv6, og det låste mønsteret for rv6 måler ordvalg (samme problem som [#554](https://github.com/navikt/copilot/issues/554)). Med sjekkens tall feiler begge GPT-modellene. Etter klassifiseringen holder begge.
 - **Claude Opus 5.5 feiler krav 1 med sjekkens egne tall (7/10).** Et manglende linjenummer er ikke en feil i testoppsettet, så å telle de to nøkkelradene som bestått går utenfor begrunnelsen vi skrev ned på forhånd. Krav 2 holder (10/10).
-- **Pinnen står fordi ingen arm oppfyller kriteriene, ikke fordi Opus regnes som 10/10.** Rekkefølgen for reservemodeller endres ikke av denne målingen; se [Anbefaling for daglig bruk](#anbefaling-for-daglig-bruk-7-oktober-2026).
+- **Pinnen står fordi ingen arm oppfyller kriteriene, ikke fordi Opus regnes som 10/10.** Rekkefølgen for reservemodeller endres ikke av denne målingen; se [Anbefaling for daglig bruk](#anbefaling-for-daglig-bruk-12-oktober-2026).
 
 Forbruket var 1 002 credits på hovedkjøringene og 227 på piloten og kontrollkjøringene, til sammen 1 229. Stoppgrensen var 1 430.
 
 Feilene i sjekkene følges opp i [#1443](https://github.com/navikt/copilot/issues/1443). Før neste måling bør rv6 få et mønster som også dekker GPT-modellenes ordvalg, utledet fra disse transkriptene. rv8 bør ikke lese «blokkerende» i en 🟡-rad som prioritet.
 
-## Anbefaling for daglig bruk (7. oktober 2026)
+<a id="anbefaling-for-daglig-bruk-7-oktober-2026"></a>
+
+## Anbefaling for daglig bruk (12. oktober 2026)
 
 Tabellen gjelder når du velger modell selv. Innsatsnivå (effort) kan ikke settes i agent-frontmatter, så nivåene her er råd, ikke noe agentene håndhever.
 
-| Oppgave                         | Modell                                                         | Målt                                                                                                                             |
-| ------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Daglig koding                   | GPT-6 Sol Low. GPT-6 Luna Medium til små, avgrensede rettinger | GPT-6 Sol: koding 30/30, 24,7 credits (batch 4). Luna Medium: 30/30 i kodesuiten 30. september (batch 2) for omtrent 1,7 credits |
-| Planlegging                     | GPT-6 Sol Low. Claude Opus 5.5 Low for oppgaver i rød sone     | GPT-6 Sol: t2, t3 og t5 5/5, t4 4/5 (én testfeil, ikke modellfeil), 27,2 credits. Opus: 5/5 på alle, 50,8 credits (batch 4)      |
-| Kodegjennomgang                 | Claude Opus 5.5 Low                                            | 40/40 i batch 4, mot 33/40 for GPT-6 Sol og 24/40 for GPT-6.1 Sol. rv7 10/10 (7. oktober)                                        |
-| Sikkerhet og personopplysninger | Claude Opus 5.5 Low                                            | rv5 7/10, 9/10 etter klassifisering, mot 3/10 for GPT-6.1 Sol og 1/10 for Luna (7. oktober). GPT-6 Sol: 3/10 (se under)          |
-| Norsk tekst                     | Hvilken som helst modell; la `@forfatter` språkvaske etterpå   | Alle tre armene 20/20 på norsk i batch 4                                                                                         |
+| Oppgave                         | Modell                                                           | Målt                                                                                                                                                                |
+| ------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Daglig koding                   | GPT-6.1 Sol Low. GPT-6 Luna Medium til små, avgrensede rettinger | GPT-6.1 Sol: koding 30/30, 25,3 credits (batch 4), t2 og rv1–rv2 5/5 (kjørt 11., vurdert 12. oktober). Luna Medium: 30/30 i kodesuiten 30. september (batch 2) for omtrent 1,7 credits |
+| Planlegging                     | GPT-6 Sol Low. Claude Opus 5.5 Low for oppgaver i rød sone       | GPT-6 Sol: t2, t3 og t5 5/5, t4 4/5 (én testfeil, ikke modellfeil), 27,2 credits. Opus: 5/5 på alle, 50,8 credits (batch 4)                                         |
+| Kodegjennomgang                 | Claude Opus 5.5 Low                                              | 40/40 i batch 4, mot 33/40 for GPT-6 Sol og 24/40 for GPT-6.1 Sol. rv7 10/10 (7. oktober)                                                                           |
+| Sikkerhet og personopplysninger | Claude Opus 5.5 Low                                              | rv5 7/10, 9/10 etter klassifisering, mot 3/10 for GPT-6.1 Sol og 1/10 for Luna (7. oktober). GPT-6 Sol: 3/10 (se under)                                             |
+| Norsk tekst                     | Hvilken som helst modell; la `@forfatter` språkvaske etterpå     | Alle tre armene 20/20 på norsk i batch 4                                                                                                                            |
 
-GPT-6.1 Sol er like god som GPT-6 Sol på koding, norsk og research, men svakere på planlegging (t2 2/5) og kodegjennomgang (24/40 i batch 4, 25/40 på rv1–rv4 7. oktober). Den har samme listepris som GPT-6 Sol, bortsett fra cachet input. Derfor er GPT-6 Sol, ikke GPT-6.1 Sol, nå reservemodell for `@code-review` og `@nav-pilot-opus`. Målt på rv5–rv8 fikk den rv5 3/10 og rv7 0/10, se [Rettede sjekker og GPT-6 Sol](#rettede-sjekker-og-gpt-6-sol-7-oktober-2026). GPT-6 Sol fikk 33/40 på de to filene, og fem av de sju bommene lå én til tre linjer feil; de to siste var det svelgede unntaket i Kotlin-fila, som ikke ble nevnt.
+GPT-6.1 Sol er like god som GPT-6 Sol på koding, norsk og research. I batch 4 og 7. oktober var den svakere på planlegging (t2 2/5) og kodegjennomgang (24/40 i batch 4, 25/40 på rv1–rv4 7. oktober). Med de rettede sjekkene besto den t2 og rv1–rv2 i fem av fem kjøringer, se [Ny kjøring av GPT-6.1 Sol](#ny-kjøring-av-gpt-61-sol-12-oktober-2026). De eldre målingene kan ikke regnes om. Den har samme listepris som GPT-6 Sol, bortsett fra cachet input. Derfor er GPT-6 Sol, ikke GPT-6.1 Sol, nå reservemodell for `@code-review` og `@nav-pilot-opus`. Målt på rv5–rv8 fikk den rv5 3/10 og rv7 0/10, se [Rettede sjekker og GPT-6 Sol](#rettede-sjekker-og-gpt-6-sol-7-oktober-2026). GPT-6 Sol fikk 33/40 på de to filene, og fem av de sju bommene lå én til tre linjer feil; de to siste var det svelgede unntaket i Kotlin-fila, som ikke ble nevnt.
 
 ## Rettede sjekker og GPT-6 Sol (7. oktober 2026)
 
