@@ -17,6 +17,7 @@ import (
 //   - Numeric types are coerced between INTEGER and FLOAT (e.g. SUM() returning a
 //     FLOAT into an int64 field, or an integer into a float64 field).
 //   - Repeated columns decode into slices and nested RECORDs into structs.
+//   - Nullable scalars need pointer fields; bigquery.Null* types are rejected.
 //
 // Columns with no matching struct field are ignored, and struct fields with no
 // matching column are left untouched. This makes scanning resilient to BigQuery
