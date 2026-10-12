@@ -17,6 +17,8 @@ nothing.
   punkter TX MIN MAX        MIN to MAX list items in the answer
   prioritet TX SPEC...      each defect's row carries a high-priority marker;
                             a SPEC named `!navn` must not carry one
+  norsk   TX                the answer is Norwegian: enough common function
+                            words, and no Finnish, Swedish or Danish markers
   svar    TX                print the answer without tool lines (not a check)
   taus    TX                no finding row carries a high-priority marker,
                             and the answer says there is nothing critical
@@ -219,6 +221,38 @@ def review(mode, text, specs):
     return None
 
 
+# norsk: function words. Code spans and fences are dropped first, so English
+# identifiers and terms neither help nor hurt. The foreign lists hold only
+# words bokmål does not use (#1501: d4 passed a reply half in Finnish).
+# Nynorsk forms count as Norwegian here; the nynorsk check rules on them.
+NORSK_ORD = set("og er ikke det som på for med til å ikkje eg ein ei eit kva frå vert òg".split())
+FREMMED = {
+    "finsk": set("että tai sekä myös joka mutta tämä ovat kuin jos ole".split()),
+    "svensk": set("och inte är att jag för från också vad hur där när måste används".split()),
+    "dansk": set("af hvad mig dig nogle noget lidt ud op uden bliver bruges brugt muligt ændre ændres gøre".split()),
+    # «for» is Norwegian too.
+    "engelsk": set("the and is of that this are not with you from which".split()),
+}
+
+
+def norsk(text):
+    # An unclosed fence runs to the end, as in Markdown.
+    prose = re.sub(r"```(?:.*?```|.*)|`[^`\n]*`", " ", "\n".join(answer_lines(text)), flags=re.S)
+    toks = re.findall(r"[a-zæøåäö]+", prose.lower())
+    if not toks:
+        return "no answer text"
+    nor = sum(t in NORSK_ORD for t in toks)
+    # No bokmål word has ä or ö (names can); such a word is Finnish or Swedish.
+    aao = sum("ä" in t or "ö" in t for t in toks)
+    counts = {lang: sum(t in marks for t in toks) + aao * (lang in ("finsk", "svensk"))
+              for lang, marks in FREMMED.items()}
+    lang, n = max(counts.items(), key=lambda kv: kv[1])
+    if n >= 3 and n * 4 >= nor:
+        return f"{lang} markers: {n}, Norwegian function words: {nor}"
+    share = nor / len(toks)
+    return None if share >= 0.08 else f"Norwegian function words {share:.0%} of {len(toks)} words, want ≥8%"
+
+
 def words(text):
     # Counted the way a writer counts, like `wc -w`: «nav-pilot» and
     # `.nav-pilot/config.toml` are one word each, a lone «#» or «-» none.
@@ -405,6 +439,8 @@ def check(cmd, args):
         return kritisk(Path(args[0]).read_text(), args[1:])
     if cmd == "kritiske":
         return kritiske(Path(args[0]).read_text())
+    if cmd == "norsk":
+        return norsk(Path(args[0]).read_text())
     if cmd == "apne":
         n = open_points(Path(args[0]).read_text())
         return None if n >= int(args[1]) else f"{n} open point(s), want ≥{args[1]}"
@@ -588,6 +624,20 @@ def selftest():
         ("apne", "## Uavklarte punkter\n\n1. Formålet.\n2. Hvem kaller.\n3. Lagring.\n", ["3"], True),
         ("apne", "Ingenting er uavklart etter lesingen, så planen er:\n1. a\n2. b\n3. c\n", ["3"], False),
         ("apne", "Følgende punkter avklares i Fase 2 sammen med teamet:\n- a\n- b\n- c\n", ["3"], False),
+        # #1501: d4 must answer in Norwegian. Code and English terms are free.
+        ("norsk", "Grensen er en konstant i `Config.kt`, og den brukes i ruten. Det er ikke mulig å endre den per miljø uten en env-variabel.\n", [], True),
+        ("norsk", "```kotlin\nval maksAntall = System.getenv(\"MAKS\")?.toInt() ?: 100\n```\nLes verdien fra miljøet og send den til `oppgaveRoutes()` som parameter.\n", [], True),
+        ("norsk", (REPO / "docs/golden-baselines/2026-10-08-delegering-steg3/rev1/transkripter/d4.run2.txt").read_text(), [], "finsk"),
+        ("norsk", "Gränsen är en konstant i `Config.kt` och den används i rutten. Det går inte att ändra den per miljö utan en variabel.\n", [], "svensk"),
+        ("norsk", "Grænsen er en konstant i `Config.kt`, og den bliver brugt af ruten. Hvad du skal gøre er at læse den ud af miljøet efter opstart, så den kan ændres lidt nu og da.\n", [], "dansk"),
+        ("norsk", "Det er en konstant i Config.kt, og den bruges i ruten. Det er ikke muligt at ændre den per miljø.\n", [], "dansk"),
+        ("norsk", "Grensen er en konstant, og den må leses fra miljøet. Det er ikke vanskelig å gjøre:\n```kotlin\nval limit = System.getenv(\"LIMIT\") // read the value from the environment and use it for the route with this\nfun the() = this\n", [], True),
+        ("norsk", "The limit is a constant in `Config.kt` and the route uses it.\n", [], "engelsk"),
+        ("norsk", "Grensa er ein konstant i `Config.kt`, og eg ser ikkje kva som les ho frå miljøet.\n", [], True),
+        ("norsk", "Det är inte bra. Vi måste ändra gränsen och läsa den från miljön.\n", [], "svensk"),
+        ("norsk", "Det er meget enkelt, meget raskt og meget billig å lese grensen fra miljøet.\n", [], True),
+        ("norsk", "Grensen er en konstant. The route reads the limit from the config and this is not ready for the users with many tasks, which is the problem.\n", [], "engelsk"),
+        ("norsk", "Loggen viser at grensen er 100 og at det ikke er mulig å endre den per miljø.\n> Started server on port 8080 with the limit from the config\nDet må gjøres i `Config.kt`, og verdien sendes til ruten som en parameter. Det er også lurt å logge verdien som er lest, for det er den som styrer hvor mange oppgaver ruten gir ut, og den må være med i nais.yaml for hvert miljø.\n", [], True),
         # rv1/rv2 catch (2026-10-12-sol61-rerun): «unntak … null» is the swallow.
         ("linje", "| 12–13 | 🟡 | Alle unntak blir til `null`. |\n", [CATCH], True),
         ("linje", "| 12–13 | 🟡 | **Databasefeil skjules:** Alle unntak gir `null`. |\n", [CATCH], True),
@@ -606,8 +656,9 @@ def selftest():
         for cmd, text, extra, expect in cases:
             f.write_text(text)
             extra = [str(Path(tmp) / "fx") if a == "FX" else a for a in extra]
-            ok = check(cmd, [str(f), *extra]) is None
-            if ok != expect:
+            why = check(cmd, [str(f), *extra])
+            # A string expect is a failure whose reason starts with it.
+            if (why is None) != (expect is True) or isinstance(expect, str) and not why.startswith(expect):
                 failed += 1
                 print(f"FAIL {cmd} {text!r}: expected {'pass' if expect else 'fail'}")
     print(f"{len(cases) - failed}/{len(cases)} selftest cases passed")
