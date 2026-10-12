@@ -167,7 +167,10 @@ def build(directory=BASELINES):
         for txt in sorted(directory.rglob("*.txt"))
         # delegation measures which agents a persona calls, not a model, and
         # has no place on ki-utvikling.nav.no/modeller.
+        # A folder named utenfor-oppsummering holds side experiments (a changed
+        # persona in a copy of the repo) that are not a model measurement.
         if header(txt).get("suite", "none") not in ("none", "delegation")
+        and "utenfor-oppsummering" not in txt.parts
     ]
     runs.sort(key=lambda r: (r["date"], r["suite"], r["model"], r["effort"], r["source"]))
     generated = max((r["date"] for r in runs), default="1970-01-01")
@@ -189,6 +192,10 @@ def selftest():
             (d / "a-attempts.psv").write_text(attempts.format(c=complete))
             (d / "a-usage.psv").write_text(usage)
             (d / "old.txt").write_text("# agent: nav-pilot\n# repeats: 5\n")
+            # A complete baseline under utenfor-oppsummering/ must be left out too.
+            (d / "utenfor-oppsummering").mkdir()
+            for f in ("a.txt", "a-results.psv", "a-attempts.psv", "a-usage.psv"):
+                (d / "utenfor-oppsummering" / f).write_text((d / f).read_text())
             global REPO
             REPO, saved = d, REPO
             try:
@@ -198,7 +205,7 @@ def selftest():
 
     runs = run_with(ok_usage)
     run = runs[0]
-    assert len(runs) == 1, "a baseline without a suite must be left out"
+    assert len(runs) == 1, "a baseline without a suite, or under utenfor-oppsummering/, must be left out"
     assert run["checks"] == [{"id": "rv4", "description": CHECKS["rv4"][1], "passed": 1}], run["checks"]
     assert run["credits"] == {"median": 3.0, "mean": 3.0} and run["usage_complete"], run
     assert run["wall_seconds"] == {"median": 2.0} and run["cli_version"] == "1.0.90-5", run
