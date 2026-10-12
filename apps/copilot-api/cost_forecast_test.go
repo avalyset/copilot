@@ -179,3 +179,27 @@ func TestGlobalBudgetEnterpriseAICredits(t *testing.T) {
 		t.Fatalf("enterprise budget leaked into public JSON: %s", raw)
 	}
 }
+
+func TestBuildCostForecastDays(t *testing.T) {
+	f := buildCostForecast(synthDays(15, 1000, 1000), nil, oct, 0, budgetMissing)
+	if len(f.Days) != 31 || f.Days[14].Forecast || !f.Days[15].Forecast || f.Days[30].Day != "2026-10-31" {
+		t.Fatalf("days %+v", f.Days)
+	}
+	if math.Abs(f.Days[14].NetUSD-f.NetToDateUSD) > 1e-9 || math.Abs(f.Days[30].NetUSD-f.Models[0].NetMidUSD) > 1e-6 {
+		t.Fatalf("to date %v mid %v days %+v", f.NetToDateUSD, f.Models[0].NetMidUSD, f.Days)
+	}
+	for i := 1; i < len(f.Days); i++ {
+		if f.Days[i].NetUSD < f.Days[i-1].NetUSD {
+			t.Fatalf("not cumulative at %d: %+v", i, f.Days)
+		}
+	}
+}
+
+func TestBuildCostForecastDaysWithoutTrend(t *testing.T) {
+	// October only: no history, so neither model can run.
+	oct2 := upTo(synthDays(2, 1000, 1000), func(d CostDay) string { return d.Day }, "2026-10-31")[30:]
+	f := buildCostForecast(oct2, nil, oct, 0, budgetMissing)
+	if len(f.Models) != 0 || len(f.Days) != 2 || f.Days[1].Forecast {
+		t.Fatalf("actual days must come without a trend: %+v", f)
+	}
+}
