@@ -38,7 +38,7 @@ Uten en fast modell blir det lett:
 | Prinsipp              | Betydning                                                                         |
 | --------------------- | --------------------------------------------------------------------------------- |
 | Fasedisiplin          | Arbeid skal deles i tydelige faser med ulike mål og risikonivå.                   |
-| Rød/grønn-sone        | Utforskning og endring må ikke blandes ukritisk; sonene styrer trygghet og fokus. |
+| Rød/grønn-sone        | Sonene sier om utvikleren skal lære dette selv; rød sone får stubber som standard. |
 | Spesialistruting      | Oppgaver skal styres mot riktig rolle, ikke presses gjennom én generell flyt.     |
 | Lav overraskelse      | Samme type oppgave skal gi samme type håndtering så langt som mulig.              |
 | Dokumentert intensjon | Beslutninger skal forklares kort og klart, ikke bare implementeres.               |
@@ -69,7 +69,7 @@ Historikk: [issue #484](https://github.com/navikt/copilot/issues/484), `badb737c
 
 ### Rød/grønn-sone
 
-Rød sone brukes for usikkerhet, risiko, avklaringer og vurderinger. Grønn sone brukes for utførte, avgrensede og verifiserte endringer. Sonene er et styringsverktøy, ikke pynt.
+Sonene svarer på om utvikleren skal lære dette, ikke på risiko. Definisjonen står i `instructions/deliberate-ai-use.instructions.md` og er den eneste kilden. Rød sone er feilsøking, nye konsepter, kjernelogikk, sikkerhetskritisk kode og arkitekturbeslutninger. Grønn sone er boilerplate, teknologi utvikleren kan fra før, konfigurasjon, refaktorering med kjent mål og testdata. For rød sone lager agenten testskjeletter og stubber, med mindre utvikleren eksplisitt ber om implementasjon. Da får utvikleren en sjekkliste for gjennomgang per punkt.
 
 ### Spesialistruting
 
@@ -129,7 +129,7 @@ Benchmark-tall, konfidensintervaller og beslutningene de bærer ligger i `docs/n
    - Det er ikke valgfritt eller kosmetisk.
 
 2. **Rød/grønn-sone skal være en del av modellen**
-   - Sonene brukes for å styre risiko og aktivitet.
+   - Sonene styrer hva utvikleren skriver selv, og listene har én kilde: `instructions/deliberate-ai-use.instructions.md`.
 
 3. **Spesialistruting skal beholdes**
    - Ikke alt skal presses inn i én generell flyt.
