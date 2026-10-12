@@ -88,14 +88,16 @@ export function CostForecastView({ data: raw }: { data: CostForecast }) {
         </TableBody>
       </Table>
       <BodyShort size="small" textColor="subtle">
+        {data.uncertainty_label && <strong>Prognosen er {data.uncertainty_label}. </strong>}
         Usikkert anslag, kalibreres videre. Prognosen bygger på {data.days_elapsed} av {data.days_in_month} dager.
-        Treffsikkerhet hittil er snittavviket når modellen kjøres på dag 10, 15 og 20 i avsluttede måneder.
+        Treffsikkerhet hittil er snittavviket når modellen kjøres på dag 5, 10, 15, 20 og 25 i avsluttede måneder.
       </BodyShort>
       <BodyShort size="small" textColor="subtle">
-        Trend: bruttoforbruket for hele Nav følger trenden de siste 20 hverdagene. Per person: hver person følger sitt
-        eget mønster fra forrige måned, justert etter bruken så langt, og stopper ved forbruksgrensen. Juli er ferie, så
-        i august følger hver person sitt eget snitt så langt. Begge regner så ut fakturert forbruk: vi betaler for det
-        som går ut over kredittene som er inkludert i lisensene, og kredittene deles av alle i Nav.
+        Trend: bruttoforbruket for hele Nav følger trenden de siste 20 hverdagene. Det trenden venter resten av måneden,
+        fordeles på dagene etter vanlig ukedagsmønster, så kurven flater ut i helgene. Per person: hver person følger
+        sitt eget mønster fra forrige måned, justert etter bruken så langt, og stopper ved forbruksgrensen. Juli er
+        ferie, så i august følger hver person sitt eget snitt så langt. Begge regner så ut fakturert forbruk: vi betaler
+        for det som går ut over kredittene som er inkludert i lisensene, og kredittene deles av alle i Nav.
       </BodyShort>
     </VStack>
   );

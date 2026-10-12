@@ -610,9 +610,11 @@ export interface CostForecast {
   budget_status: "set" | "missing" | "error";
   budget_usd?: number;
   models: CostForecastModel[];
+  /** «tidlig i måneden, stor usikkerhet» in the first seven days of the month, when the range is ±35 %. */
+  uncertainty_label?: string;
   /** Cumulative net per day this month: actual, then the trend midpoint (forecast: true). */
   days?: { day: string; net_usd: number; forecast: boolean }[];
-  /** Planned: projected cumulative net per day with its range. Used instead of days when present. */
+  /** Projected cumulative net per remaining day with its range, from the trend model shaped by weekday. */
   daily_forecast?: { date: string; cumulative_net_usd: number; low: number; high: number }[];
 }
 
