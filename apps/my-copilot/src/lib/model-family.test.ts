@@ -21,3 +21,15 @@ describe("modelFamily", () => {
     expect(modelFamily(name)).toBe("andre");
   });
 });
+
+describe("modelFamily with Auto and code review", () => {
+  it("counts Auto with its base model on the cost page only", () => {
+    expect(modelFamily("Auto: Claude Opus 5", true)).toBe("claude_opus");
+    expect(modelFamily("Auto: GPT-5.4 mini", true)).toBe("gpt_mini");
+    expect(modelFamily("Auto: Claude Opus 5")).toBe("andre");
+  });
+  it("names code review only when asked", () => {
+    expect(modelFamily("Code Review model")).toBe("andre");
+    expect(modelFamily("Code Review model", true)).toBe("kodegjennomgang");
+  });
+});
