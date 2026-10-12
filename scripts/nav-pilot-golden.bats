@@ -533,6 +533,16 @@ run_suite() {
   done
 }
 
+@test "planning t4: a Fase 2 heading with a dash before «plan» is a plan; a deferral is not" {
+  eval "$(grep -E '^RE_FASE2_PLAN=' "$SCRIPT")"
+  for ok in '**Fase 2 – plan.** Jeg legger til grunn' 'Fase 2 - plan' 'Fase 2 — plan' '## Fase 2 – Plan' 'Fase 2: Plan' 'Fase 2 ferdig'; do
+    printf '%s\n' "$ok" | grep -qiE -- "$RE_FASE2_PLAN" || { echo "should pass: $ok"; false; }
+  done
+  for bad in 'Fase 2 – planlegges etter svarene' 'Fase 2 – når du har svart' 'Vi tar Fase 2 – plan etter svarene' 'Fase 2 kommer etterpå'; do
+    if printf '%s\n' "$bad" | grep -qiE -- "$RE_FASE2_PLAN"; then echo "should fail: $bad"; false; fi
+  done
+}
+
 @test "--suite and --agent are refused together" {
   run bash "$SCRIPT" --suite review --agent nav-pilot --dry-run
   [ "$status" -eq 2 ]
@@ -777,11 +787,76 @@ EOF
   grep -q '^7b|1|1|0|1|0|0.0|Hvem konsumerer topicen?|$' "$SHIM/b-judge.psv"
 }
 
-@test "planning judge: controls below 95 % leave the blind-spot tests unevaluated" {
+@test "planning judge: every judge spend lands live in judge-credits.psv" {
+  run_suite good --agent nav-pilot --only 7,7b --keep
+  [ "$status" -eq 0 ]
+  dir="$(sed -n 's/.*transcripts kept in //p' <<<"$output")"
+  [ -n "$dir" ]
+  grep -qx 'controls|0|0.00' "$dir/judge-credits.psv"
+  grep -qx '7|1|0.0' "$dir/judge-credits.psv"
+  grep -qx '7b|1|0.0' "$dir/judge-credits.psv"
+  rm -rf "$dir"
+}
+
+@test "planning judge: a failed judge call still logs its spend in judge-credits.psv" {
+  make_judge_stub
+  # Passes the controls, but gives no usable vote on the suite's answers.
+  cat >"$SHIM/judge-stub-bad" <<EOF
+#!/bin/sh
+p="\$(cat)"
+case "\$p" in *personopplysninger*) echo "not json" ;; *) printf '%s' "\$p" | "$SHIM/judge-stub" ;; esac
+EOF
+  chmod +x "$SHIM/judge-stub-bad"
+  make_bench_shim
+  GOLDEN_FIXTURES="${BATS_TEST_DIRNAME}/golden-fixtures" BENCH_MODE=good NAV_PILOT_GOLDEN_USAGE_DB="$SHIM/none.db" PATH="$SHIM:$PATH" \
+    BS_JUDGE_CMD="$SHIM/judge-stub-bad" BS_JUDGE_RECORD="" BS_JUDGE_CONTROLS="$SHIM/controls.tsv" \
+    run /bin/bash "$SCRIPT" --agent nav-pilot --only 7 --keep --save-baseline "$SHIM/b.txt"
+  dir="$(sed -n 's/.*transcripts kept in //p' <<<"$output")"
+  [ -n "$dir" ]
+  grep -q '^7|1|error|.*fewer than two usable votes' "$SHIM/b-results.psv"
+  grep -qx '7|1|0.0' "$dir/judge-credits.psv"
+  rm -rf "$dir"
+}
+
+@test "planning judge: 92-95 % is the tolerance band, under 92 % fails, and both are logged" {
+  make_judge_stub
+  j="$BATS_TEST_DIRNAME/blindspot-judge.py"
+  export BS_JUDGE_CMD="$SHIM/judge-stub" BS_JUDGE_RECORD="$SHIM/record.psv"
+  # 12 of 13 agree: 92.3 %, which the old 95 % gate failed.
+  { printf 'question\texpected_bs1\texpected_bs2\tsource\n'
+    for i in $(seq 12); do printf 'Skal fnr lagres som String eller Long nr %s?\t0\t0\tstub\n' "$i"; done
+    printf 'Hvem konsumerer topicen?\t0\t1\twrong\n'; } >"$SHIM/band.tsv"
+  run python3 "$j" controls "$SHIM/band.tsv"
+  [ "$status" -eq 0 ]; [[ "$output" == *"agree=12 "*"status=band"* ]]
+  grep -q '|13|12|0.923|0.00|band|rows=14$' "$SHIM/record.psv"
+  run python3 "$j" controls "$SHIM/band.tsv"
+  [[ "$output" == "controls cached"* ]]
+  # 11 of 13: 84.6 %, a fail. It is logged and not reused.
+  sed -i.bak '2s/\t0\t0\t/\t1\t0\t/' "$SHIM/band.tsv"
+  run python3 "$j" controls "$SHIM/band.tsv"
+  [ "$status" -eq 1 ]; [[ "$output" == *"status=fail"* ]]
+  grep -q '|13|11|0.846|0.00|fail|rows=2,14$' "$SHIM/record.psv"
+  run python3 "$j" controls "$SHIM/band.tsv"
+  [ "$status" -eq 1 ]; [[ "$output" != "controls cached"* ]]
+}
+
+@test "planning judge: a newer fail for the same hash beats an older pass" {
+  make_judge_stub
+  j="$BATS_TEST_DIRNAME/blindspot-judge.py"
+  export BS_JUDGE_CMD="$SHIM/judge-stub" BS_JUDGE_RECORD="$SHIM/record.psv"
+  run python3 "$j" controls "$SHIM/controls.tsv"
+  [ "$status" -eq 0 ]; [[ "$output" == "controls n=2 agree=2"* ]]
+  sed 's/|pass$/|fail|rows=2/' "$SHIM/record.psv" >>"$SHIM/record.psv.new"
+  cat "$SHIM/record.psv.new" >>"$SHIM/record.psv"
+  run python3 "$j" controls "$SHIM/controls.tsv"
+  [ "$status" -eq 0 ]; [[ "$output" == "controls n=2 agree=2"* ]]
+}
+
+@test "planning judge: controls below 92 % leave the blind-spot tests unevaluated" {
   make_judge_stub
   printf 'question\texpected_bs1\texpected_bs2\tsource\nHvem konsumerer topicen?\t0\t1\twrong\n' >"$SHIM/bad.tsv"
   BS_JUDGE_CONTROLS="$SHIM/bad.tsv" run_suite good --agent nav-pilot --only 7b
-  grep -q '^7b|1|error|.*controls under 95 %' "$SHIM/b-results.psv"
+  grep -q '^7b|1|error|.*controls under 92 %' "$SHIM/b-results.psv"
   [[ "$output" == *"row 2: want bs1=0 bs2=1, judge bs1=1 bs2=0"* ]]
 }
 
