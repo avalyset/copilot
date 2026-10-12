@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "generatedAt": "2026-10-10T22:57:56.558Z",
+  "generatedAt": "2026-10-12T07:51:39.925Z",
   "items": [
     {
       "id": "accessibility-agent",
@@ -1171,13 +1171,13 @@
     {
       "id": "klarsprak",
       "name": "klarsprak",
-      "description": "Redigér og kvalitetssikre norsk tekst: klarspråk, fjerning av KI-markører, anglisismer, fagtermer og nynorsk/svensk-innblanding. Bruk denne skillen hver gang du skriver, redigerer eller språkvasker norsk tekst — README-er, ADR-er, UI-tekst, blogginnlegg, dokumentasjon, e-poster, commit-meldinger og PR-beskrivelser — også når brukeren ikke sier «klarspråk» eksplisitt, men bare ber om hjelp med norsk tekst.",
+      "description": "Redigér og kvalitetssikre norsk tekst som havner i en fil eller blir publisert: README-er, dokumentasjon, ADR-er, UI-tekst, nettsider, nyhetssaker, e-poster, commit-meldinger og PR- og issue-beskrivelser. Bruk den også når brukeren limer inn norsk tekst og ber om språkvask eller korrektur. Dekker klarspråk, KI-markører, anglisismer, fagtermer og nynorsk/svensk-innblanding. Ikke bruk den for vanlige chatsvar, heller ikke når svaret er på norsk eller forklarer hvordan kode virker.",
       "type": "skill",
       "domain": "general",
       "filePath": "skills/klarsprak/SKILL.md",
       "repoPath": "skills/klarsprak/SKILL.md",
       "rawGitHubUrl": "https://raw.githubusercontent.com/navikt/copilot/main/skills/klarsprak/SKILL.md",
-      "contentHash": "71d2ad63c5c2b62da281a87abe982c4c6cacc5bdacff0f0c713c57039c6db562",
+      "contentHash": "985cf5c9ab29c2077dbca9e35d7d44f4ce21ead43ea7bbd40b9f8b0a9f0e6758",
       "installUrl": null,
       "insidersInstallUrl": null,
       "tags": ["norwegian", "klarspråk", "ai-markers", "anglicisms", "text-quality", "spraakvask"],
