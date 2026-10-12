@@ -19,7 +19,9 @@ func TestTeamYearOverviewBasisAndSuppression(t *testing.T) {
 	row := func(month string, complete bool, grossUsers, netUsers int64) teamYearRow {
 		r := cov
 		r.Month, r.NetComplete, r.GrossUsers, r.Gross, r.NetUsers, r.Net, r.NoUsageNet = month+"-01", complete, grossUsers, 100.004, netUsers, 80.006, 1.5
-		r.ResidualPct = bigquery.NullFloat64{Float64: 7.126, Valid: complete}
+		if complete {
+			r.ResidualPct = new(7.126)
+		}
 		return r
 	}
 	rows := []teamYearRow{
@@ -32,7 +34,7 @@ func TestTeamYearOverviewBasisAndSuppression(t *testing.T) {
 		row("2026-10", true, 7, 7),  // current month never net
 		row("2026-11", false, 0, 0), // future
 	}
-	rows[5].ResidualPct = bigquery.NullFloat64{} // complete run from before the residual columns
+	rows[5].ResidualPct = nil // complete run from before the residual columns
 	got := teamYearOverview("123", 2026, rows, time.Date(2026, 10, 11, 0, 0, 0, 0, time.UTC))
 	want := []struct {
 		month, basis string
@@ -287,5 +289,21 @@ func TestTeamYearQueryWithoutResidualColumns(t *testing.T) {
 	old := bigquery.Schema{{Name: "month"}, {Name: "status"}}
 	if hasColumns(old, "enterprise_net", "residual_net") || !hasColumns(append(old, &bigquery.FieldSchema{Name: "enterprise_net"}, &bigquery.FieldSchema{Name: "residual_net"}), "enterprise_net", "residual_net") {
 		t.Error("hasColumns wrong")
+	}
+}
+
+// The rows come through decodeBQRow, not the bigquery package's loader. A
+// bigquery.NullFloat64 field made every team-year request fail in prod with
+// "cannot assign value of type float64".
+func TestTeamYearRowDecodes(t *testing.T) {
+	schema := bigquery.Schema{{Name: "month", Type: bigquery.StringFieldType}, {Name: "residual_pct", Type: bigquery.FloatFieldType}}
+	for _, v := range []bigquery.Value{12.05, nil} {
+		var row teamYearRow
+		if err := decodeBQRow(schema, []bigquery.Value{"2026-01-01", v}, &row); err != nil {
+			t.Fatalf("residual_pct %v: %v", v, err)
+		}
+		if (row.ResidualPct == nil) != (v == nil) {
+			t.Errorf("residual_pct %v decoded as %v", v, row.ResidualPct)
+		}
 	}
 }
