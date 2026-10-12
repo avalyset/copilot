@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "generatedAt": "2026-10-12T08:48:42.310Z",
+  "generatedAt": "2026-10-12T12:54:37.543Z",
   "items": [
     {
       "id": "accessibility-agent",
@@ -300,7 +300,7 @@
       "filePath": ".github/agents/nav-pilot.agent.md",
       "repoPath": "agents/nav-pilot.agent.md",
       "rawGitHubUrl": "https://raw.githubusercontent.com/navikt/copilot/main/agents/nav-pilot.agent.md",
-      "contentHash": "54d1681c3e4676529f5474c07db8176c7d0d3a2631fc714beab370817d44b158",
+      "contentHash": "018471685b00d5b714d68df69192961cf528e88a7db454902a259b257689bd42",
       "installUrl": "/install/agent?url=vscode%3Achat-agent%2Finstall%3Furl%3Dhttps%3A%2F%2Fraw.githubusercontent.com%2Fnavikt%2Fcopilot%2Fmain%2Fagents%2Fnav-pilot.agent.md",
       "insidersInstallUrl": "/install/agent?url=vscode-insiders%3Achat-agent%2Finstall%3Furl%3Dhttps%3A%2F%2Fraw.githubusercontent.com%2Fnavikt%2Fcopilot%2Fmain%2Fagents%2Fnav-pilot.agent.md",
       "tools": [
@@ -522,7 +522,7 @@
       "filePath": ".github/instructions/deliberate-ai-use.instructions.md",
       "repoPath": "instructions/deliberate-ai-use.instructions.md",
       "rawGitHubUrl": "https://raw.githubusercontent.com/navikt/copilot/main/instructions/deliberate-ai-use.instructions.md",
-      "contentHash": "15622615367ccc328a27b93c4c9ec0a9384dd94245e6c87c2143b92c502ace85",
+      "contentHash": "c323e573246943749c88364c2c40aae13f389efb92b8ab604b63ab87f3133af5",
       "installUrl": "/install/instructions?url=vscode%3Achat-instructions%2Finstall%3Furl%3Dhttps%3A%2F%2Fraw.githubusercontent.com%2Fnavikt%2Fcopilot%2Fmain%2Finstructions%2Fdeliberate-ai-use.instructions.md",
       "insidersInstallUrl": "/install/instructions?url=vscode-insiders%3Achat-instructions%2Finstall%3Furl%3Dhttps%3A%2F%2Fraw.githubusercontent.com%2Fnavikt%2Fcopilot%2Fmain%2Finstructions%2Fdeliberate-ai-use.instructions.md",
       "applyTo": "**",
