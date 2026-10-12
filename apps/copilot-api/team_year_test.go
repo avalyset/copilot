@@ -19,6 +19,7 @@ func TestTeamYearOverviewBasisAndSuppression(t *testing.T) {
 	row := func(month string, complete bool, grossUsers, netUsers int64) teamYearRow {
 		r := cov
 		r.Month, r.NetComplete, r.GrossUsers, r.Gross, r.NetUsers, r.Net, r.NoUsageNet = month+"-01", complete, grossUsers, 100.004, netUsers, 80.006, 1.5
+		r.ResidualPct = bigquery.NullFloat64{Float64: 7.126, Valid: complete}
 		return r
 	}
 	rows := []teamYearRow{
@@ -31,6 +32,7 @@ func TestTeamYearOverviewBasisAndSuppression(t *testing.T) {
 		row("2026-10", true, 7, 7),  // current month never net
 		row("2026-11", false, 0, 0), // future
 	}
+	rows[5].ResidualPct = bigquery.NullFloat64{} // complete run from before the residual columns
 	got := teamYearOverview("123", 2026, rows, time.Date(2026, 10, 11, 0, 0, 0, 0, time.UTC))
 	want := []struct {
 		month, basis string
@@ -52,6 +54,10 @@ func TestTeamYearOverviewBasisAndSuppression(t *testing.T) {
 		m := got.Months[i]
 		if m.Month != w.month || m.Basis != w.basis || m.Hidden != w.hidden || (m.NetUSD != nil) != w.net || (m.GrossUSD != nil) != w.gross {
 			t.Errorf("%s = %+v, want %+v", w.month, m, w)
+		}
+		hasNet := (w.basis == basisNet || w.basis == basisPremium) && w.month != "2026-09"
+		if (m.ResidualPct != nil) != hasNet || (hasNet && *m.ResidualPct != 7.13) {
+			t.Errorf("%s residual = %v", w.month, m.ResidualPct)
 		}
 		if (m.Hidden || m.Basis == basisNone) && (m.Users != nil || m.NoUsageNetUSD != nil) {
 			t.Errorf("%s leaks counts: %+v", w.month, m)
