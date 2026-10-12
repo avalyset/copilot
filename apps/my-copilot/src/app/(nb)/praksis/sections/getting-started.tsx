@@ -49,8 +49,7 @@ export default function GettingStarted() {
                 for å installere nav-pilot, cplt og klienten.
               </li>
               <li>
-                Logg gh inn utenfor cplt med <code>gh auth login --hostname github.com</code>. OpenCode bruker sin egen
-                innlogging via <code>/connect</code>.
+                Logg inn på GitHub med <code>gh auth login</code>.
               </li>
               <li>
                 Kjør <code>nav-pilot</code> i repoet ditt. Agenten starter i cplt.

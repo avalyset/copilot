@@ -515,17 +515,13 @@ client = "copilot"
 # ── cplt auth ──────────────────────────────────────────────────────────────────
 # nav-pilot never extracts a Copilot token itself. This key filters only the
 # environment handed to cplt, not the credential source used inside the sandbox.
-# cplt can inject a host gh token into the environment through macOS Keychain
-# substitution even with the gh guard off. The guard's serve-once token file is
-# a separate channel. Copilot's stored login can also remain available.
+# cplt can deny or inject tokens; Copilot can also use its stored login.
 #
 # copilot_auth_mode:
 #   auto         : no constraint (default)
 #   env_only     : require a non-blank GH_TOKEN/GITHUB_TOKEN/COPILOT_GITHUB_TOKEN
 #   gh_only      : strip those variables before cplt starts (legacy filter)
-# Exclusive env-only or gh-only source enforcement is unsupported by the current
-# cplt contract. env_only cannot prevent cplt denying the exported token;
-# gh_only cannot disable Copilot's stored login or prevent cplt injecting a token.
+# Neither mode enforces an exclusive credential source.
 # Allowed: auto, env_only, gh_only — Default: auto
 # copilot_auth_mode = "auto"
 `

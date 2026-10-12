@@ -346,7 +346,8 @@ func TestStagedCopilotRequiresCplt(t *testing.T) {
 	SetActivePakke(stagedFixturePakke())
 	t.Cleanup(func() { SetActivePakke(nil) })
 
-	// A plain copilot on PATH does not satisfy the sandbox requirement.
+	// A PATH with a plain `copilot` that is not cplt: the legacy path would
+	// launch it, the staged path must refuse.
 	dir := t.TempDir()
 	if err := testhome.WriteExec(filepath.Join(dir, "copilot"), "#!/bin/sh\necho copilot 1.2.3\n"); err != nil {
 		t.Fatalf("writing fake copilot: %v", err)

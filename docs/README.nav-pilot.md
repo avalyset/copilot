@@ -439,14 +439,36 @@ Den ukentlige kjøringen er av til repovariabelen `SUBAGENT_PIN_CANARY` er `true
 > konto eller kilde Copilot bruker. `auto` (standard) bevarer token-variablene,
 > `env_only` avbryter hvis ingen av `GH_TOKEN`, `GITHUB_TOKEN` eller
 > `COPILOT_GITHUB_TOKEN` har en verdi som ikke er blank, og `gh_only` fjerner
-> alle tre fra miljøet før cplt starter. Begge oppstartsløpene bruker filteret.
-> cplt kan nekte variablene gjennom `deny.env`, sende inn et host-gh-token eller
-> beholde tilgangen til Copilots lagrede innlogging. På macOS kan standardvalget
-> for nøkkelringerstatning sende inn et gh-token selv med gh-vakta av.
-> Gh-vaktas 0600-fil som leses én gang, er en separat kanal for tokenet.
-> Eksklusivt valg av autentiseringskilde støttes ikke. Se
-> [autentiseringskontrakten](../cli/nav-pilot/docs/copilot-auth.md) og
-> [SECURITY.md](../SECURITY.md).
+> alle tre fra miljøet før cplt starter. cplt kan nekte eller sende inn token,
+> og Copilot kan bruke lagret innlogging. Ingen av valgene garanterer hvilken
+> konto eller kilde Copilot bruker. Se [SECURITY.md](../SECURITY.md).
+
+Hvis innlogging i sandkassen feiler, avslutt økten og logg inn manuelt i en
+terminal utenfor cplt. nav-pilot starter aldri innlogging. gh kan falle tilbake
+til klartekst hvis nøkkelringen svikter:
+
+```sh
+(unset GH_TOKEN GITHUB_TOKEN COPILOT_GITHUB_TOKEN GH_HOST GH_REPO; gh auth login --hostname github.com --web)
+(unset GH_TOKEN GITHUB_TOKEN COPILOT_GITHUB_TOKEN GH_HOST GH_REPO; gh auth status --hostname github.com)
+```
+
+Krev at github.com-kontoene viser `(keyring)` før du starter igjen. Hvis status
+viser en konfigurasjonsfil, stopp og rett tilgangen til nøkkelringen. Status
+viser lagringsmetadata, ikke en garanti om at innloggingen bare brukte sikker
+lagring. Velg en konto med Copilot-tilgang; dette endrer gh-kontoen, ikke
+Copilots egen innlogging. Host-status bekrefter heller ikke autentisering i
+sandkassen. Copilots lagrede innlogging kan fortsatt virke når gh-status feiler.
+
+Med `env_only` må du enten beholde modusen og sende inn et Copilot-token eller
+velge lagret innlogging med `nav-pilot config set copilot_auth_mode auto` før
+den tokenfrie omstarten:
+
+```sh
+(unset GH_TOKEN GITHUB_TOKEN COPILOT_GITHUB_TOKEN GH_HOST GH_REPO; nav-pilot)
+```
+
+Ved push-/PR-feil, kjør `cplt doctor` og `cplt config get gh_guard.enabled`
+utenfor sandkassen. Oppgrader cplt hvis støtte for gh-vaktas token-cache mangler.
 
 ### opencode: Nav-kontekst automatisk
 

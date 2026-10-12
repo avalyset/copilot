@@ -206,7 +206,7 @@ const SCAN = {
   markdown: "docs/news/articles/*.md",
 };
 
-const IGNORED = /(^|\/)(node_modules|\.next|dist|coverage|copilot-intern)\/|\.test\.tsx?$|\.stories\.tsx?$|_test\.go$/;
+const IGNORED = /(^|\/)(node_modules|\.next|dist|coverage)\/|\.test\.tsx?$|\.stories\.tsx?$|_test\.go$/;
 const glob = (pattern: string) =>
   fs
     .globSync(pattern, { cwd: REPO })
@@ -347,11 +347,6 @@ if (process.env.UPDATE_LINK_INVENTORY) updateInventory(found);
 // ── tests ────────────────────────────────────────────────────────────────────
 
 describe("link inventory", () => {
-  it("does not scan the ignored copilot-intern checkout", () => {
-    expect(IGNORED.test("copilot-intern/godkjente-agenter.md")).toBe(true);
-    expect(IGNORED.test("docs/README.nav-pilot.md")).toBe(false);
-  });
-
   it("tells a broken link from a working one", () => {
     expect(resolvePath("/finnes-ikke")).toHaveProperty("error");
     expect(resolvePath("/nyheter/finnes-ikke")).toHaveProperty("error");

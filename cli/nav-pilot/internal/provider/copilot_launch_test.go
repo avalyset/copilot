@@ -304,27 +304,18 @@ func TestApplyCopilotAuthMode(t *testing.T) {
 func TestCopilotLaunchAuthEnvironment(t *testing.T) {
 	for _, staged := range []bool{false, true} {
 		for _, tc := range []struct {
-			name, mode string
-			tokens     [3]string
-			refuse     bool
+			mode   string
+			tokens [3]string
 		}{
-			{"auto preserves competing tokens", "auto", [3]string{"gh-env", "github-env", "copilot-env"}, false},
-			{"auto without token", "auto", [3]string{}, false},
-			{"unresolved mode", "", [3]string{"gh-env", "", ""}, false},
-			{"env_only GH_TOKEN", "env_only", [3]string{"gh-env", "", ""}, false},
-			{"env_only GITHUB_TOKEN", "env_only", [3]string{"", "github-env", ""}, false},
-			{"env_only COPILOT_GITHUB_TOKEN", "env_only", [3]string{"", "", "copilot-env"}, false},
-			{"env_only preserves competing tokens", "env_only", [3]string{"gh-env", "github-env", "copilot-env"}, false},
-			{"env_only absent", "env_only", [3]string{}, true},
-			{"env_only whitespace", "env_only", [3]string{" \t", "\n", " "}, true},
-			{"gh_only strips competing tokens", "gh_only", [3]string{"gh-env", "github-env", "copilot-env"}, false},
-			{"gh_only strips blank entries", "gh_only", [3]string{}, false},
+			{"auto", [3]string{}},
+			{"env_only", [3]string{"gh-env", "github-env", "copilot-env"}},
+			{"gh_only", [3]string{"gh-env", "github-env", "copilot-env"}},
 		} {
 			path := "legacy/"
 			if staged {
 				path = "staged/"
 			}
-			t.Run(path+tc.name, func(t *testing.T) {
+			t.Run(path+tc.mode, func(t *testing.T) {
 				isolateHome(t)
 				SetActivePakke(stagedFixturePakke())
 				t.Cleanup(func() { SetActivePakke(nil) })
@@ -332,7 +323,7 @@ func TestCopilotLaunchAuthEnvironment(t *testing.T) {
 				dir := t.TempDir()
 				out := filepath.Join(dir, "auth-env")
 				// The unset sentinel distinguishes removal from an empty value.
-				script := "#!/bin/sh\nprintf 'cplt-started\\n' >&2\nprintf '%s\\n' \"${GH_TOKEN-UNSET}\" \"${GITHUB_TOKEN-UNSET}\" \"${COPILOT_GITHUB_TOKEN-UNSET}\" \"$AUTH_TEST_KEEP\" > \"$AUTH_TEST_OUT\"\n"
+				script := "#!/bin/sh\nprintf '%s\\n' \"${GH_TOKEN-UNSET}\" \"${GITHUB_TOKEN-UNSET}\" \"${COPILOT_GITHUB_TOKEN-UNSET}\" \"$AUTH_TEST_KEEP\" > \"$AUTH_TEST_OUT\"\n"
 				if err := testhome.WriteExec(filepath.Join(dir, "cplt"), script); err != nil {
 					t.Fatal(err)
 				}
@@ -343,8 +334,6 @@ func TestCopilotLaunchAuthEnvironment(t *testing.T) {
 					t.Fatal(err)
 				}
 				t.Setenv("PATH", dir)
-				t.Setenv("GH_CONFIG_DIR", dir)
-				t.Setenv("COPILOT_PROVIDER_BASE_URL", "")
 				t.Setenv("AUTH_TEST_OUT", out)
 				t.Setenv("AUTH_TEST_KEEP", "unrelated")
 				for i, name := range ghTokenVars {
@@ -364,18 +353,6 @@ func TestCopilotLaunchAuthEnvironment(t *testing.T) {
 				} else {
 					err = LaunchCopilotResolved(r)
 				}
-				if tc.refuse {
-					if err == nil || !strings.Contains(err.Error(), "copilot_auth_mode=env_only") {
-						t.Fatalf("want env_only refusal, got %v", err)
-					}
-					if !strings.Contains(err.Error(), "Keep env_only and export a Copilot token") || !strings.Contains(err.Error(), "nav-pilot config set copilot_auth_mode auto, then restart with "+HostGHRestartCommand) {
-						t.Fatalf("refusal must offer an explicit mode change before clean restart: %v", err)
-					}
-					if _, err := os.Stat(out); !errors.Is(err, os.ErrNotExist) {
-						t.Fatalf("cplt must not launch, output stat: %v", err)
-					}
-					return
-				}
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -383,18 +360,11 @@ func TestCopilotLaunchAuthEnvironment(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if strings.Contains(string(messages), "exclusive gh-source enforcement is unsupported") != (tc.mode == "gh_only") {
-					t.Fatalf("gh_only invocation warning: %s", messages)
+				if strings.Contains(string(messages), "filters only cplt's input environment") != (tc.mode != "auto") {
+					t.Fatalf("auth mode warning: %s", messages)
 				}
-				if strings.Contains(string(messages), "exclusive env-source delivery is unsupported") != (tc.mode == "env_only") {
-					t.Fatalf("env_only invocation warning: %s", messages)
-				}
-				wantRecovery := tc.mode == "gh_only" || !hasEnvToken([]string{"GH_TOKEN=" + tc.tokens[0], "GITHUB_TOKEN=" + tc.tokens[1], "COPILOT_GITHUB_TOKEN=" + tc.tokens[2]})
-				if strings.Contains(string(messages), CopilotHostLoginCommand) != wantRecovery {
-					t.Fatalf("host recovery diagnostic: %s", messages)
-				}
-				if wantRecovery && strings.Index(string(messages), CopilotHostLoginCommand) > strings.Index(string(messages), "cplt-started") {
-					t.Fatalf("recovery must precede sandbox launch: %s", messages)
+				if strings.Contains(string(messages), "gh auth login") {
+					t.Fatalf("launch must not predict authentication: %s", messages)
 				}
 				if _, err := os.Stat(out + ".gh"); !errors.Is(err, os.ErrNotExist) {
 					t.Fatalf("launch must not run gh auth commands: %v", err)

@@ -11,7 +11,6 @@ import (
 	"strings"
 	"testing"
 
-	providerpkg "github.com/navikt/copilot/cli/nav-pilot/internal/provider"
 	"github.com/navikt/copilot/cli/nav-pilot/internal/testhome"
 )
 
@@ -109,6 +108,9 @@ func TestGHAuthFrom(t *testing.T) {
 	}{
 		{"file token", "✓ Logged in to github.com account x (/home/x/.config/gh/hosts.yml)", nil, ghAuthOK},
 		{"keyring", "✓ Logged in to github.com account x (keyring)", nil, ghAuthKeyring},
+		{"mixed storage", "Logged in to github.com account x (keyring)\nLogged in to github.com account y (/home/y/.config/gh/hosts.yml)", nil, ghAuthOK},
+		{"other host", "Logged in to github.example.com account x (keyring)", nil, ghAuthOK},
+		{"unknown storage", "diagnostic mentions (keyring)", nil, ghAuthOK},
 		{"not signed in", "You are not logged into any GitHub hosts.", exit("1"), ghAuthNone},
 		{"killed at the deadline", "", exit("137"), ghAuthUnknown},
 		{"did not start", "", errors.New("boom"), ghAuthUnknown},
@@ -120,11 +122,6 @@ func TestGHAuthFrom(t *testing.T) {
 }
 
 func TestReportGHAuth(t *testing.T) {
-	isolatedConfig(t)
-	t.Setenv("GH_CONFIG_DIR", t.TempDir())
-	for _, name := range []string{"GH_TOKEN", "GITHUB_TOKEN", "COPILOT_GITHUB_TOKEN"} {
-		t.Setenv(name, "")
-	}
 	stubSSH(t, false)
 	out := func(client string, st ghAuth) string {
 		var b bytes.Buffer
@@ -140,54 +137,27 @@ func TestReportGHAuth(t *testing.T) {
 	if s := out("copilot", ghAuthKeyring); !strings.Contains(s, "signed in") {
 		t.Errorf("copilot, keyring: %q", s)
 	}
+	if s := out("copilot", ghAuthOK); !strings.Contains(s, "has not verified secure storage") {
+		t.Errorf("plaintext must not promise secure storage: %q", s)
+	}
 	if s := out("copilot", ghAuthMissing); !strings.Contains(s, "not installed") {
 		t.Errorf("missing: %q", s)
 	}
-	if s := out("copilot", ghAuthUnknown); !strings.Contains(s, "timeout") {
+	if s := out("copilot", ghAuthUnknown); !strings.Contains(s, "timeout") || strings.Contains(s, "gh auth login") {
 		t.Errorf("unknown: %q", s)
 	}
 	for _, client := range []string{"copilot", "opencode", "pi"} {
-		for _, state := range []ghAuth{ghAuthMissing, ghAuthNone, ghAuthKeyring} {
+		for _, state := range []ghAuth{ghAuthNone, ghAuthKeyring} {
 			s := out(client, state)
 			if strings.Contains(s, "--insecure-storage") {
 				t.Errorf("%s must keep secure storage: %q", client, s)
 			}
-			if state == ghAuthKeyring {
-				for _, want := range []string{"exec-token cache", "gh_guard.enabled", "cplt doctor", "upgrade cplt:"} {
-					if !strings.Contains(s, want) {
-						t.Errorf("%s keyring diagnostic missing %q: %s", client, want, s)
-					}
-				}
-			} else if !strings.Contains(s, providerpkg.CopilotHostLoginCommand) || !strings.Contains(s, providerpkg.HostGHRestartCommand) {
+			if state == ghAuthKeyring && !strings.Contains(s, "Sandbox authentication remains unverified") {
+				t.Errorf("%s host status must not promise sandbox auth: %s", client, s)
+			} else if state == ghAuthNone && (!strings.Contains(s, hostGHLoginCommand) || !strings.Contains(s, hostGHRestartCommand)) {
 				t.Errorf("%s secure host recovery: %s", client, s)
 			}
 		}
-	}
-}
-
-func TestReportGHAuthRecoveryPreservesConfiguredMode(t *testing.T) {
-	for _, mode := range []string{"auto", "env_only", "gh_only"} {
-		t.Run(mode, func(t *testing.T) {
-			isolatedConfig(t)
-			config := "version = 1\nclient = \"copilot\"\ncopilot_auth_mode = \"" + mode + "\"\n"
-			if err := os.WriteFile(configPath(), []byte(config), 0o600); err != nil {
-				t.Fatal(err)
-			}
-			cfg, err := readConfig()
-			if err != nil {
-				t.Fatal(err)
-			}
-			r := resolve(cfg, CLIOverrides{})
-			var b bytes.Buffer
-			reportGHAuth(&b, "", r.Client, r.CopilotAuthMode, ghAuthNone, "")
-			if strings.Contains(b.String(), "env_only rejects a restart") != (mode == "env_only") {
-				t.Fatalf("mode-aware recovery: %s", &b)
-			}
-			got, err := os.ReadFile(configPath())
-			if err != nil || string(got) != config {
-				t.Fatalf("report changed config: %q, %v", got, err)
-			}
-		})
 	}
 }
 

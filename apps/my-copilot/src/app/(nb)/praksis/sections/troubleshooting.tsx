@@ -93,12 +93,8 @@ export default function Troubleshooting() {
                       <strong>/clear</strong>.
                     </li>
                     <li>
-                      Hjelper ikke det, avslutt med <strong>/exit</strong> og start på nytt. Ved innloggingsfeil i cplt
-                      følger du{" "}
-                      <a href="/nav-pilot/guider/cplt-feilmeldinger#keyring" className="text-blue-600 hover:underline">
-                        innloggingsfeilsøkingen
-                      </a>
-                      . <strong>/logout</strong> fjerner ikke et token som cplt sender inn i miljøet.
+                      Hjelper ikke det, avslutt med <strong>/exit</strong> og start på nytt. <strong>/logout</strong>{" "}
+                      fjerner ikke et token som cplt sender inn i miljøet. Ved innloggingsfeil, se cplt-guiden over.
                     </li>
                   </VStack>
                 </VStack>

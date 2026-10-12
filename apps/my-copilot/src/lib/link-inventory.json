@@ -979,11 +979,7 @@
       "jvm-oppstart": ["apps/my-copilot/src/app/(nb)/(nav-pilot)/nav-pilot/guider/cplt-feilmeldinger/page.tsx"],
       "keyring": [
         "apps/my-copilot/src/app/(nb)/(nav-pilot)/nav-pilot/guider/cplt-feilmeldinger/page.tsx",
-        "apps/my-copilot/src/app/(nb)/(nav-pilot)/nav-pilot/guider/kom-i-gang/page.tsx",
-        "apps/my-copilot/src/app/(nb)/(nav-pilot)/nav-pilot/klienter/page.tsx",
-        "apps/my-copilot/src/app/(nb)/(nav-pilot)/nav-pilot/referanse/page.tsx",
-        "apps/my-copilot/src/app/(nb)/praksis/sections/getting-started.tsx",
-        "apps/my-copilot/src/app/(nb)/praksis/sections/troubleshooting.tsx"
+        "apps/my-copilot/src/app/(nb)/praksis/sections/getting-started.tsx"
       ],
       "localhost": ["apps/my-copilot/src/app/(nb)/(nav-pilot)/nav-pilot/guider/cplt-feilmeldinger/page.tsx"],
       "login-nettleser": [
@@ -1267,8 +1263,8 @@
       "hva-agenten-kan": ["apps/my-copilot/src/app/(nb)/(nav-pilot)/nav-pilot/guider/kom-i-gang/page.tsx"],
       "installer": ["apps/my-copilot/src/app/(nb)/(nav-pilot)/nav-pilot/guider/kom-i-gang/page.tsx"],
       "logg-inn": [
-        "apps/my-copilot/src/app/(nb)/(nav-pilot)/nav-pilot/guider/kom-i-gang/page.tsx",
-        "apps/my-copilot/src/components/nav-pilot/interactive-setup-wizard.tsx"
+        "apps/my-copilot/src/app/(nb)/(nav-pilot)/nav-pilot/guider/cplt-git/page.tsx",
+        "apps/my-copilot/src/app/(nb)/(nav-pilot)/nav-pilot/guider/kom-i-gang/page.tsx"
       ],
       "videre": ["apps/my-copilot/src/app/(nb)/(nav-pilot)/nav-pilot/guider/kom-i-gang/page.tsx"]
     }

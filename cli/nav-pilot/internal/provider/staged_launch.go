@@ -455,7 +455,8 @@ func LaunchOpenCodeStaged(r domain.ResolvedConfig, s StagedLaunch) error {
 
 // LaunchCopilotStaged launches copilot against a staged Tier 2 payload.
 //
-// cplt is required on both Copilot paths: a payload launch uses sandbox flags
+// cplt is required here even though the legacy copilot path still accepts a
+// plain copilot binary: a payload launch is defined by the sandbox flags
 // (--allow-read over the staged tree), and running it unsandboxed is not the
 // contract anyone reviewed. There is no fallback and no confirmation prompt.
 func LaunchCopilotStaged(r domain.ResolvedConfig, s StagedLaunch) error {
@@ -480,7 +481,6 @@ func LaunchCopilotStaged(r domain.ResolvedConfig, s StagedLaunch) error {
 	if err != nil {
 		return err
 	}
-	ReportCopilotAuthRecovery(os.Stderr, spec.env, r.CopilotAuthMode)
 	PrintCpltSandboxHint()
 	PrintAutonomyNotice(r)
 	PrintModelAvailabilityHint(r.Model)
