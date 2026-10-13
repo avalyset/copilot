@@ -35,9 +35,9 @@ type caller struct {
 //   - User token from my-copilot: NAVident and preferred_username set, idtyp
 //     not app, azp my-copilot. X-On-Behalf-Of is refused.
 //
-// Anything else is refused. The middleware wraps the submit route only, so
-// the header is honoured on POST /api/v1/surveys/{id}/responses and nowhere
-// else.
+// Anything else is refused. The middleware wraps the submit and status
+// routes only, so the header is honoured on POST /api/v1/surveys/{id}/responses
+// and GET /api/v1/surveys/{id}/status and nowhere else.
 type authenticator struct {
 	httpClient *http.Client
 	endpoint   string
@@ -60,7 +60,7 @@ func newAuthenticator(endpoint, preAuthorizedApps string) *authenticator {
 
 var (
 	errUnauthorized = errors.New("invalid or expired token")
-	errForbidden    = errors.New("this caller may not submit answers")
+	errForbidden    = errors.New("this caller may not answer surveys")
 	errBadHeader    = errors.New("X-On-Behalf-Of is missing, malformed, or sent with a user token")
 )
 
@@ -158,13 +158,32 @@ func authMiddleware(a *authenticator, next http.HandlerFunc) http.HandlerFunc {
 // copilot-api and my-copilot, so the routes do not reveal that they exist.
 func adminOnly(a *authenticator, next http.Handler) http.HandlerFunc {
 	return authMiddleware(a, func(w http.ResponseWriter, r *http.Request) {
-		c, ok := callerFromContext(r.Context())
-		if !ok || c.email == "" || a.adminGroup == "" || !slices.Contains(c.groups, a.adminGroup) {
+		c, _ := callerFromContext(r.Context())
+		if reason := adminDenyReason(c, a.adminGroup); reason != "" {
+			// Never the e-mail, oid, hash or group ids: only why and how many groups.
+			groups := 0
+			if c != nil {
+				groups = len(c.groups)
+			}
+			slog.Info("admin denied", "reason", reason, "groups", groups)
 			writeError(w, http.StatusNotFound, "not found")
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// adminDenyReason is why c is not an admin, or "" when it is.
+func adminDenyReason(c *caller, adminGroup string) string {
+	switch {
+	case c == nil || c.email == "":
+		return "not my-copilot"
+	case adminGroup == "":
+		return "no group env"
+	case !slices.Contains(c.groups, adminGroup):
+		return "no admin group"
+	}
+	return ""
 }
 
 func callerFromContext(ctx context.Context) (*caller, bool) {
