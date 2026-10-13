@@ -322,7 +322,7 @@ export interface TeamYearOverview {
   };
 }
 
-// All of Nav, one row per month of a year, from GET /api/v1/copilot/billing/admin-monthly.
+// All of Nav, one row per month of a year, from GET /api/v1/admin/billing/monthly.
 // Net months reconcile: assigned_net_usd + residual_net_usd = enterprise_net_usd.
 export interface AdminMonth {
   month: string;
@@ -559,7 +559,7 @@ export interface BillingModelDailyCost {
 }
 
 // Month-end forecast against the enterprise budget, from copilot-api's admin-only
-// GET /api/v1/copilot/admin/cost-forecast. Internal: never show on public pages.
+// GET /api/v1/admin/billing/cost-forecast. Internal: never show on public pages.
 export interface CostForecastModel {
   model: "trend" | "per_user";
   gross_mid_usd: number;
