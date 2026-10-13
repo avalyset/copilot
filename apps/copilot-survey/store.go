@@ -11,7 +11,20 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
+
+// queuedAnswers is the size of each survey's in-memory queue, set under
+// s.mu whenever a queue changes. The process cannot count what a crash
+// loses; the last value scraped before a restart is the nearest estimate,
+// since submissions and writes between that scrape and the crash are not
+// in it. A loss at shutdown (flush) is logged, not counted: /metrics is
+// already closed by then, so a counter would never be scraped.
+var queuedAnswers = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	Name: "survey_queued_answers",
+	Help: "Survey answers queued in memory, not written yet.",
+}, []string{"survey"})
 
 // The data model: two tables with nothing in common but the survey id.
 //
@@ -100,6 +113,7 @@ func (s *surveyStore) submit(ctx context.Context, surveyID, hash string, closesO
 	}
 	q.hashes[hash] = true
 	q.answers = append(q.answers, r)
+	queuedAnswers.WithLabelValues(surveyID).Set(float64(len(q.answers)))
 	if len(q.answers) >= answerBatch {
 		if err := s.writeLocked(ctx, surveyID, q); err != nil {
 			slog.Error("survey: writing a batch failed, kept queued", "survey", surveyID, "error_type", fmt.Sprintf("%T", err))
@@ -149,6 +163,7 @@ func (s *surveyStore) writeLocked(ctx context.Context, surveyID string, q *surve
 		return err
 	}
 	q.hashes, q.answers = map[string]bool{}, nil
+	queuedAnswers.WithLabelValues(surveyID).Set(0)
 	return nil
 }
 
