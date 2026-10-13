@@ -135,7 +135,51 @@ spec:
           labels:
             namespace: copilot
             severity: warning
+            alert_type: custom
+            app: copilot-api
           annotations:
             summary: More than 20 SAML name-id lookups in copilot-api in 5 minutes
             consequence: Something is resolving many GitHub logins to e-mails. In dev-gcp that is copilot-survey, and copilot-cli may be answering surveys on behalf of members. In prod-gcp nothing should call this route yet.
             action: Compare with survey_submissions_total on copilot-survey and check copilot-cli's logs for the same window (see SECURITY.md).
+---
+# Sends this app's custom alerts to #github-copilot-alerts instead of the team
+# default channel. Rules opt in with alert_type: custom (keeps them off the Nais
+# default route, so no double posts) and app: copilot-api. slack-webhook is the secret Nais puts in
+# every team namespace for its default alert route; the channel field picks
+# the channel.
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: copilot-api-slack
+  namespace: copilot
+  labels:
+    alertmanagerConfig: copilot-api-slack
+spec:
+  receivers:
+    - name: copilot-api-slack
+      slackConfigs:
+        - apiURL:
+            name: slack-webhook
+            key: apiUrl
+          channel: "#github-copilot-alerts"
+          sendResolved: true
+          # Nais's own slack.* templates, so messages look like the team default.
+          # The backslash keeps the deploy step's Handlebars from rendering them.
+          title: '\{{ template "slack.title" . }}'
+          text: '\{{ template "slack.text" . }}'
+          color: '\{{ template "slack.color" . }}'
+  route:
+    groupBy:
+      - alertname
+    matchers:
+      # Nais runs the operator without namespace enforcement, so match it here.
+      - name: namespace
+        matchType: "="
+        value: copilot
+      - name: alert_type
+        matchType: "="
+        value: custom
+      - name: app
+        matchType: "="
+        value: copilot-api
+    receiver: copilot-api-slack
