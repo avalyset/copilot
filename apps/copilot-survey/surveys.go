@@ -528,6 +528,12 @@ type surveyAPI struct {
 	// false means hash has already answered.
 	store func(ctx context.Context, surveyID, hash string, closesOn time.Time, r response) (bool, error)
 	now   func() time.Time
+	// answered tells whether hash has answered, queued or written
+	// (surveyStore.answered). Nil without storage.
+	answered func(ctx context.Context, surveyID, hash string) (bool, error)
+	// answers reads a survey's written answers for the admin aggregates
+	// (surveyStore.answers). Nil without storage.
+	answers func(ctx context.Context, surveyID string) ([]storedAnswer, error)
 }
 
 // open: active, inside its window and with a key. A survey without a key
@@ -600,6 +606,60 @@ func cliVersion(v string) ([]int, bool) {
 	return out, true
 }
 
+// navEmail looks up the caller's Nav e-mail, writing the 403 or 503 itself
+// when it cannot.
+func (a *surveyAPI) navEmail(w http.ResponseWriter, r *http.Request, who *caller, surveyID string) (string, bool) {
+	email, err := a.emailFor(r.Context(), who)
+	switch {
+	case errors.Is(err, errNoNavIdentity):
+		writeError(w, http.StatusForbidden, err.Error()+"; answer on ki-utvikling.nav.no instead")
+		return "", false
+	case err != nil || normaliseEmail(email) == "":
+		slog.Warn("survey: e-mail lookup failed", "survey", surveyID, "error_type", fmt.Sprintf("%T", err))
+		writeError(w, http.StatusServiceUnavailable, "could not confirm your Nav identity, try again later")
+		return "", false
+	}
+	return email, true
+}
+
+// status tells the caller whether they have answered an open survey. Like
+// submit, it never logs who asked or the hash.
+func (a *surveyAPI) status(w http.ResponseWriter, r *http.Request) {
+	who, ok := callerFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusInternalServerError, "missing authenticated user")
+		return
+	}
+	id := r.PathValue("id")
+	i := slices.IndexFunc(a.surveys, func(s survey) bool { return s.ID == id })
+	if i < 0 || !a.open(a.surveys[i]) {
+		writeError(w, http.StatusNotFound, "no open survey with that id")
+		return
+	}
+	s := a.surveys[i]
+	if a.answered == nil || a.emailFor == nil {
+		writeError(w, http.StatusServiceUnavailable, "this survey is not taking answers right now")
+		return
+	}
+	email, ok := a.navEmail(w, r, who, s.ID)
+	if !ok {
+		return
+	}
+	// Bounded like submit's store call: the lookup holds the store's mutex,
+	// so a stalled database must not hold it for as long as the client waits.
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+	answered, err := a.answered(ctx, s.ID, participantHash(a.keys[s.ID], email))
+	if err != nil {
+		slog.Error("survey: checking participation failed", "survey", s.ID, "error_type", fmt.Sprintf("%T", err))
+		writeError(w, http.StatusServiceUnavailable, "could not check your answer, try again later")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	_ = json.NewEncoder(w).Encode(map[string]bool{"answered": answered})
+}
+
 var errNoNavIdentity = errors.New("no Nav identity is linked to this GitHub account")
 
 // submit never logs who answered, what they answered or the hash.
@@ -639,14 +699,8 @@ func (a *surveyAPI) submit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	email, err := a.emailFor(r.Context(), who)
-	switch {
-	case errors.Is(err, errNoNavIdentity):
-		writeError(w, http.StatusForbidden, err.Error()+"; answer on ki-utvikling.nav.no instead")
-		return
-	case err != nil || normaliseEmail(email) == "":
-		slog.Warn("survey: e-mail lookup failed", "survey", s.ID, "error_type", fmt.Sprintf("%T", err))
-		writeError(w, http.StatusServiceUnavailable, "could not confirm your Nav identity, try again later")
+	email, ok := a.navEmail(w, r, who, s.ID)
+	if !ok {
 		return
 	}
 	versions := map[string]int{}
@@ -655,9 +709,9 @@ func (a *surveyAPI) submit(w http.ResponseWriter, r *http.Request) {
 			versions[q.ID] = q.Version
 		}
 	}
-	// Not the request's context: a batch write it triggers must not be
+	// Not the request's context: the write it triggers must not be
 	// cancelled because this caller hung up, and must carry nothing of this
-	// request, since it writes nine other people's answers too.
+	// request, since it may also write answers queued by earlier failed writes.
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	fresh, err := a.store(ctx, s.ID, participantHash(key, email), s.closesOn(), response{
@@ -679,5 +733,5 @@ func (a *surveyAPI) submit(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	_, _ = w.Write([]byte(`{"status":"recorded","note":"nothing links the answers to you, so they cannot be changed or withdrawn"}`))
+	_, _ = w.Write([]byte(`{"status":"recorded","note":"the answers have no id you can present, so they cannot be changed or withdrawn"}`))
 }

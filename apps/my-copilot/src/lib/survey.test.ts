@@ -7,6 +7,7 @@ import {
   openSurveyTitles,
   surveyWindow,
   getActiveSurveys,
+  getSurveyStatus,
   isSkipped,
   optionsOf,
   scaleSteps,
@@ -101,12 +102,33 @@ describe("submitAnswers", () => {
   });
 });
 
+describe("getSurveyStatus", () => {
+  beforeEach(() => vi.stubEnv("COPILOT_SURVEY_URL", "http://copilot-survey"));
+  it.each([
+    [200, '{"answered":true}', true],
+    [200, '{"answered":false}', false],
+    [200, "{}", undefined],
+    [403, "{}", undefined],
+    [404, "{}", undefined],
+    [503, "{}", undefined],
+  ])("maps %i %s", async (code, body, want) => {
+    const fetch = vi.fn().mockResolvedValue(new Response(body, { status: code }));
+    vi.stubGlobal("fetch", fetch);
+    expect(await getSurveyStatus("token", "q4-2026")).toBe(want);
+    expect(fetch.mock.calls[0][0]).toBe("http://copilot-survey/api/v1/surveys/q4-2026/status");
+  });
+  it("fails open when copilot-survey is down", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("down")));
+    expect(await getSurveyStatus("token", "q4-2026")).toBeUndefined();
+  });
+});
+
 describe("types follow copilot-survey's schema.json", () => {
   const schema = JSON.parse(
     readFileSync(path.resolve(__dirname, "../../../copilot-survey/surveys/schema.json"), "utf8")
   ) as { properties: object; $defs: { question: { properties: object }; item: { properties: object } } };
-  // Not needed to render or send: copilot-survey serves only open surveys, min_cli_version is for nav-pilot, and the rest is for analysis.
-  const ignored = ["series", "active", "nudge", "min_cli_version", "starts", "version", "construct", "reverse"];
+  // Not needed to render or send: copilot-survey serves only open surveys, min_cli_version is for nav-pilot, and the rest is for analysis. version picks the scale labels on /admin/undersokelser.
+  const ignored = ["series", "active", "nudge", "min_cli_version", "starts", "construct", "reverse"];
   const fields = (props: object) =>
     Object.keys(props)
       .filter((k) => !ignored.includes(k))
@@ -119,6 +141,7 @@ describe("types follow copilot-survey's schema.json", () => {
     required: false,
     min: 0,
     max: 0,
+    version: 0,
     labels: [],
     options: [],
     max_choices: 0,
@@ -128,7 +151,7 @@ describe("types follow copilot-survey's schema.json", () => {
     skip_if: { question: "", answer: "" },
     items: [],
   } satisfies Required<SurveyQuestion>;
-  const item = { id: "", text: "" } satisfies Required<NonNullable<SurveyQuestion["items"]>[number]>;
+  const item = { id: "", version: 0, text: "" } satisfies Required<NonNullable<SurveyQuestion["items"]>[number]>;
   const survey = { id: "", title: "", intro: "", ends: "", questions: [] } satisfies Required<Survey>;
 
   it("reads every field the web needs, and none the schema lacks", () => {

@@ -1,7 +1,7 @@
 "use client";
 
 import NextLink from "next/link";
-import { Heading, BodyShort, Box, Accordion, VStack } from "@navikt/ds-react";
+import { Heading, BodyShort, Box, Accordion, Link, VStack } from "@navikt/ds-react";
 import { WrenchIcon, InformationSquareIcon } from "@navikt/aksel-icons";
 
 export default function Troubleshooting() {
@@ -58,7 +58,8 @@ export default function Troubleshooting() {
                 <BodyShort className="text-sm text-gray-600">
                   Endpoint-sikkerhet (CrowdStrike Falcon) kan i prinsippet påvirke nettverkstrafikk, men er per i dag
                   ingen kjent kilde til Copilot-feil. Mistenker du likevel det, si fra i{" "}
-                  <strong>#github-copilot</strong>, så får vi kartlagt det.
+                  <Link href="https://nav-it.slack.com/archives/C0ASJSZK8P8">#ki-produktutvikling-diskusjon</Link>, så
+                  får vi kartlagt det.
                 </BodyShort>
               </VStack>
             </Accordion.Content>
@@ -210,8 +211,9 @@ export default function Troubleshooting() {
           </Heading>
         </div>
         <BodyShort className="text-gray-800">
-          Hvis trinnene over ikke løser problemet ditt, spør gjerne i <strong>#github-copilot</strong> på Slack. Legg
-          ved et utdrag fra Copilot Logs og nevn hvilken Editor (inkludert versjon) du sitter på.
+          Hvis trinnene over ikke løser problemet ditt, spør gjerne i{" "}
+          <Link href="https://nav-it.slack.com/archives/C0ASJSZK8P8">#ki-produktutvikling-diskusjon</Link> på Slack.
+          Legg ved et utdrag fra Copilot Logs og nevn hvilken Editor (inkludert versjon) du sitter på.
         </BodyShort>
       </Box>
     </VStack>

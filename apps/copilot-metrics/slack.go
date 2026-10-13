@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -10,6 +11,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 )
@@ -20,8 +22,11 @@ type SlackNotifier struct {
 }
 
 type slackMessage struct {
-	Text   string       `json:"text"`
-	Blocks []slackBlock `json:"blocks,omitempty"`
+	// Channel is honoured by legacy incoming webhooks such as the Nais
+	// slack-webhook secret; app-scoped webhooks ignore it.
+	Channel string       `json:"channel,omitempty"`
+	Text    string       `json:"text"`
+	Blocks  []slackBlock `json:"blocks,omitempty"`
 }
 
 type slackBlock struct {
@@ -76,7 +81,6 @@ func (s *SlackNotifier) NotifyIngestionResult(ctx context.Context, successCount,
 	}
 
 	sb.WriteString("\n📊 *Impact*: Usage dashboard in my-copilot may show incomplete data.\n")
-	sb.WriteString("👤 *Contact*: #copilot-support\n")
 
 	s.send(ctx, sb.String())
 }
@@ -86,13 +90,14 @@ func (s *SlackNotifier) NotifyError(ctx context.Context, message string) {
 	if s == nil {
 		return
 	}
-	text := fmt.Sprintf("🔴 *Copilot Usage Metrics – Failed*\n\n%s\n\n📊 *Impact*: Usage dashboard will not update until resolved.\n👤 *Contact*: #copilot-support", message)
+	text := fmt.Sprintf("🔴 *Copilot Usage Metrics – Failed*\n\n%s\n\n📊 *Impact*: Usage dashboard will not update until resolved.", message)
 	s.send(ctx, text)
 }
 
 func (s *SlackNotifier) send(ctx context.Context, text string) {
 	msg := slackMessage{
-		Text: text,
+		Channel: cmp.Or(os.Getenv("SLACK_CHANNEL"), "#github-copilot-alerts"),
+		Text:    text,
 		Blocks: []slackBlock{
 			{
 				Type: "section",

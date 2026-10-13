@@ -49,11 +49,24 @@
       "avvik": ["apps/my-copilot/src/components/cost-anomalies.tsx"],
       "budsjett-per-dag": ["apps/my-copilot/src/components/budget-days-section.tsx"],
       "kilde-og-metode": ["apps/my-copilot/src/components/insight-page.tsx"],
+      "maanedsinnsikt": ["apps/my-copilot/src/components/cost-anomalies.tsx"],
       "per-maned": ["apps/my-copilot/src/app/(nb)/admin/kostnad/page.tsx"],
       "prognose": ["apps/my-copilot/src/components/cost-forecast.tsx"],
       "storforbrukere": ["apps/my-copilot/src/components/high-consumers.tsx"],
       "trender": ["apps/my-copilot/src/components/cost-trends.tsx"]
     }
+  },
+  "/admin/kostnad/innsyn": {
+    "sources": ["apps/my-copilot/src/app/(nb)/admin/kostnad/innsyn/page.tsx"],
+    "anchors": {}
+  },
+  "/admin/undersokelser": {
+    "sources": [
+      "apps/my-copilot/src/app/(nb)/admin/page.tsx",
+      "apps/my-copilot/src/app/(nb)/admin/undersokelser/[id]/page.tsx",
+      "apps/my-copilot/src/app/(nb)/admin/undersokelser/page.tsx"
+    ],
+    "anchors": {}
   },
   "/adopsjon": {
     "sources": [

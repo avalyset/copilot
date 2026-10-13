@@ -322,7 +322,7 @@ export interface TeamYearOverview {
   };
 }
 
-// All of Nav, one row per month of a year, from GET /api/v1/copilot/billing/admin-monthly.
+// All of Nav, one row per month of a year, from GET /api/v1/admin/billing/monthly.
 // Net months reconcile: assigned_net_usd + residual_net_usd = enterprise_net_usd.
 export interface AdminMonth {
   month: string;
@@ -452,16 +452,6 @@ export interface MonthlyTrend {
   cli_users: number;
 }
 
-export interface MonthlyBillingUsage {
-  month: string;
-  model: string;
-  sku: string;
-  gross_requests: number;
-  net_requests: number;
-  gross_amount: number;
-  net_amount: number;
-}
-
 export interface BillingMonthlyTrend {
   year_month: string;
   total_gross_amount: number;
@@ -568,28 +558,8 @@ export interface BillingModelDailyCost {
   net_amount: number;
 }
 
-export interface BillingModelForecastPoint {
-  day: string;
-  actual_cumulative?: number;
-  projected_cumulative: number;
-  is_actual: boolean;
-}
-
-export interface BillingModelForecast {
-  month: string;
-  days_in_month: number;
-  days_elapsed: number;
-  last_actual_day?: string;
-  actual_mtd_net_amount: number;
-  projected_daily_run_rate: number;
-  projected_eom_net_amount: number;
-  lower_eom_net_amount: number;
-  upper_eom_net_amount: number;
-  points: BillingModelForecastPoint[];
-}
-
 // Month-end forecast against the enterprise budget, from copilot-api's admin-only
-// GET /api/v1/copilot/admin/cost-forecast. Internal: never show on public pages.
+// GET /api/v1/admin/billing/cost-forecast. Internal: never show on public pages.
 export interface CostForecastModel {
   model: "trend" | "per_user";
   gross_mid_usd: number;
@@ -728,4 +698,15 @@ export interface HighConsumerMonth {
   limit_changed: boolean;
   /** Users by gross for the month as share of the limit; null without a limit or too few users. */
   budget_bands: SpendBand[] | null;
+}
+
+/** Nav's Copilot volume per month (admin only). Tokens are reported for Copilot CLI and the Copilot app only, without a model split. */
+export interface VolumeMonth {
+  month: string;
+  ai_credits: number;
+  premium_requests: number;
+  cli_input_tokens: number;
+  cli_output_tokens: number;
+  app_input_tokens: number;
+  app_output_tokens: number;
 }

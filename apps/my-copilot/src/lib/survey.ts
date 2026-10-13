@@ -9,6 +9,8 @@ import { exchangeTokenFor, fetchWithTimeout, isLocalDev } from "@/lib/backend-ap
 
 export type SurveyQuestion = {
   id: string;
+  /** Bumped on any change to text, options or scale; results are split by it. */
+  version?: number;
   type: "scale" | "choice" | "multi" | "text" | "matrix";
   text: string;
   required?: boolean;
@@ -23,7 +25,7 @@ export type SurveyQuestion = {
   max_length?: number;
   skip_if?: { question: string; answer: string };
   /** matrix: statements on its scale, each answered and sent as a scale answer under its own id. */
-  items?: { id: string; text: string }[];
+  items?: { id: string; version?: number; text: string }[];
 };
 
 export type Survey = {
@@ -182,4 +184,83 @@ export async function submitAnswers(userToken: string, surveyId: string, answers
     default:
       return { status: "error" };
   }
+}
+
+/**
+ * Whether the user has answered the survey, by the same check that refuses a
+ * second answer. undefined on anything but a 200: the page then shows the form,
+ * and copilot-survey still refuses a duplicate with 409.
+ */
+export async function getSurveyStatus(userToken: string, surveyId: string): Promise<boolean | undefined> {
+  const url = process.env.COPILOT_SURVEY_URL;
+  if (!url) return undefined;
+  try {
+    const headers: Record<string, string> = {};
+    if (!isLocalDev) headers.Authorization = `Bearer ${await exchangeTokenFor(userToken, "copilot-survey")}`;
+    const res = await fetchWithTimeout(
+      `${url}/api/v1/surveys/${encodeURIComponent(surveyId)}/status`,
+      { headers, cache: "no-store" },
+      5000,
+      "timeout"
+    );
+    if (res.status !== 200) return undefined;
+    const body = (await res.json()) as { answered?: unknown };
+    return typeof body.answered === "boolean" ? body.answered : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** A survey as copilot-survey's admin API lists it (GET /api/v1/admin/surveys). */
+export type SurveySummary = {
+  id: string;
+  title: string;
+  starts: string;
+  ends: string;
+  status: "kommende" | "åpen" | "stengt";
+  responses: number;
+};
+
+/** One version of a question. n and options are null when under five answered it; an option's count is null when hidden. */
+export type VersionResult = {
+  version: number;
+  n: number | null;
+  options: { value: string; count: number | null; suppressed: boolean }[] | null;
+};
+
+export type QuestionResult = {
+  id: string;
+  type: SurveyQuestion["type"];
+  text: string;
+  versions?: VersionResult[];
+  items?: { id: string; text: string; versions: VersionResult[] }[];
+};
+
+/** questions is null when the whole survey has fewer than five answers (suppressed). */
+export type SurveyResults = SurveySummary & { suppressed: boolean; questions: QuestionResult[] | null };
+
+export type AdminResult<T> = { status: "ok"; data: T } | { status: "not-found" } | { status: "error" };
+
+/** GET an admin endpoint of copilot-survey for the user. 403 and 404 both mean not-found, so a non-admin learns nothing. */
+async function adminGet<T>(userToken: string, path: string): Promise<AdminResult<T>> {
+  const url = process.env.COPILOT_SURVEY_URL;
+  if (!url) return { status: "error" };
+  try {
+    const headers: Record<string, string> = {};
+    if (!isLocalDev) headers.Authorization = `Bearer ${await exchangeTokenFor(userToken, "copilot-survey")}`;
+    const res = await fetchWithTimeout(`${url}${path}`, { headers, cache: "no-store" }, 10000, "timeout");
+    if (res.status === 403 || res.status === 404) return { status: "not-found" };
+    if (!res.ok) return { status: "error" };
+    return { status: "ok", data: (await res.json()) as T };
+  } catch {
+    return { status: "error" };
+  }
+}
+
+export const getAdminSurveys = (userToken: string) =>
+  adminGet<{ surveys: SurveySummary[] }>(userToken, "/api/v1/admin/surveys");
+
+export async function getSurveyResults(userToken: string, id: string): Promise<AdminResult<SurveyResults>> {
+  if (!/^[a-z0-9-]{1,64}$/.test(id)) return { status: "not-found" };
+  return adminGet<SurveyResults>(userToken, `/api/v1/admin/surveys/${id}/results`);
 }
