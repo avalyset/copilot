@@ -93,8 +93,8 @@ export default function Troubleshooting() {
                       <strong>/clear</strong>.
                     </li>
                     <li>
-                      Hjelper ikke det: logg ut med <strong>/logout</strong>, avslutt med <strong>/exit</strong>, og
-                      start på nytt.
+                      Hjelper ikke det, avslutt med <strong>/exit</strong> og start på nytt. <strong>/logout</strong>{" "}
+                      fjerner ikke et token som cplt sender inn i miljøet. Ved innloggingsfeil, se cplt-guiden over.
                     </li>
                   </VStack>
                 </VStack>

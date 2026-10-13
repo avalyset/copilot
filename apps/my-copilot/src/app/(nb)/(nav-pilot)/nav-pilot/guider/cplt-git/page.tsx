@@ -211,16 +211,12 @@ gh pr create --head min-branch`}
             Push fra OpenCode
           </LinkableHeading>
           <BodyLong>
-            Gjelder macOS. <code className={code}>gh auth login</code> legger tokenet i nøkkelringen. Copilot når den,
-            OpenCode gjør ikke, så <code className={code}>git push</code> fra OpenCode får ikke noe token. cplt fjerner
-            også <code className={code}>GH_TOKEN</code> fra miljøet til OpenCode. Send det inn:
-          </BodyLong>
-          <CodeBlock compact>
-            {`cplt config set sandbox.pass_env GH_TOKEN
-export GH_TOKEN=$(gh auth token)   # i skallet du starter nav-pilot fra`}
-          </CodeBlock>
-          <BodyLong>
-            Da ligger tokenet ditt i miljøet til agenten, og den kan bruke det mot GitHub uten å gå via gh-vakta.
+            Med gh-vakta på henter nyere cplt gh-tokenet før OpenCode starter. Git over HTTPS bruker vakta som
+            credential helper. Ikke eksporter tokenet til agenten eller bruk klartekstlagring. Følg{" "}
+            <NextLink href="/nav-pilot/guider/kom-i-gang#logg-inn" className={linkClass}>
+              Logg inn på GitHub
+            </NextLink>
+            . Feiler push fortsatt, sjekk HTTPS-remote og gh-vakta, og oppgrader eldre cplt.
           </BodyLong>
         </VStack>
       </section>

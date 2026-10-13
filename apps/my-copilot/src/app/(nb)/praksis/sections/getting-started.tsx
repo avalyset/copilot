@@ -109,9 +109,12 @@ export default function GettingStarted() {
           Feilsøking: "Du har ikke tilgang"
         </Heading>
         <BodyShort>
-          Hvis Copilot sier at du ikke har tilgang selv om du vet at lisensen er tildelt, prøv å{" "}
-          <strong>logge ut og inn igjen</strong> av GitHub, i terminalen med <code>/logout</code> og <code>/login</code>{" "}
-          eller i editoren. Ofte henger gamle sesjons-tokens igjen.
+          Kontroller at du bruker GitHub-kontoen som har Nav-lisensen. I terminalen kan et eksportert token overstyre
+          den lagrede innloggingen. Følg{" "}
+          <NextLink href="/nav-pilot/guider/cplt-feilmeldinger#keyring" className="text-blue-600 hover:underline">
+            feilsøkingen for innlogging i cplt
+          </NextLink>
+          . I editoren kan du logge ut av GitHub og inn igjen med riktig konto.
         </BodyShort>
       </Alert>
     </div>

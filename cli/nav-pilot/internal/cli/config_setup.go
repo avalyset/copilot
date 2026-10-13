@@ -403,10 +403,13 @@ func runConfigSetupWith(flagSource string, advanced bool) error {
 	fmt.Printf("    %s\n", dim("pass CLI flags per run (e.g. --client opencode)"))
 	fmt.Println()
 
-	// Push and PRs need a gh login the sandbox can read. Setup only: a
-	// launch never probes.
+	// Setup checks stored host login only; a launch never probes.
+	ghCfg, err := readConfig()
+	if err != nil {
+		return fmt.Errorf("reading saved config: %w", err)
+	}
 	st, detail := ghAuthProbe()
-	reportGHAuth(os.Stdout, "", answers.Client, st, detail)
+	reportGHAuth(os.Stdout, "", answers.Client, resolve(ghCfg, CLIOverrides{}).CopilotAuthMode, st, detail)
 	if cpltPath != "" {
 		offerCpltInit(cpltPath)
 	}

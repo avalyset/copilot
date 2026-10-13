@@ -396,8 +396,8 @@ func TestStagedCopilotHonorsRestrictiveAuthMode(t *testing.T) {
 	err := LaunchCopilotStaged(
 		domain.ResolvedConfig{Client: "copilot", AskUser: true, CopilotAuthMode: "env_only"},
 		StagedLaunch{Dir: dir, PakkeName: "grillmester", Context: "full"})
-	if err == nil {
-		t.Fatal("staged launch should fail closed for env_only without a token")
+	if err == nil || !strings.Contains(err.Error(), "copilot_auth_mode=env_only") {
+		t.Fatalf("expected env_only refusal, got %v", err)
 	}
 	if _, statErr := os.Stat(marker); statErr == nil {
 		t.Fatal("cplt must not launch for env_only without a token")

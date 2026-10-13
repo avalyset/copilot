@@ -612,7 +612,7 @@ gh pr create --head min-branch`}
           </BodyLong>
           <CodeBlock compact>
             {`git remote set-url origin https://github.com/navikt/<repo>.git
-gh auth setup-git`}
+(unset GH_TOKEN GITHUB_TOKEN COPILOT_GITHUB_TOKEN GH_HOST GH_REPO; gh auth setup-git --hostname github.com)`}
           </CodeBlock>
 
           <LinkableHeading id="go-vcs" size="small" level="3">
@@ -640,20 +640,73 @@ gh auth setup-git`}
             Agenten og innlogging
           </LinkableHeading>
 
+          <LinkableHeading id="login-nettleser" size="small" level="3">
+            /login åpner ikke nettleseren, eller jeg får ikke kopiert URL-en
+          </LinkableHeading>
           <LinkableHeading id="keyring" size="small" level="3">
             System vault not available
           </LinkableHeading>
+          <VStack as="ol" gap="space-16" className="list-decimal" style={{ paddingInlineStart: "var(--ax-space-24)" }}>
+            <li>
+              Avslutt agenten. Velg <strong>No, cancel sign-in</strong> hvis Copilot tilbyr klartekstlagring.
+              Nøkkelringfeilen kan også komme på macOS. Bruk en vanlig terminal utenfor cplt til stegene under.
+            </li>
+            <li>
+              Logg gh inn på github.com. Underskallet fjerner gamle token- og host-overstyringer uten å endre skallet
+              ditt. Velg HTTPS og nettleserinnlogging:
+              <CodeBlock compact>{`(
+unset COPILOT_GITHUB_TOKEN GH_TOKEN GITHUB_TOKEN GH_HOST GH_REPO
+gh auth login --hostname github.com &&
+  gh auth status --hostname github.com &&
+  gh api --hostname github.com user --jq .login
+)`}</CodeBlock>
+              Åpner ikke nettleseren, skriv{" "}
+              <a href="https://github.com/login/device" className={linkClass}>
+                github.com/login/device
+              </a>{" "}
+              manuelt og bruk enhetskoden gh viser. Dette gjelder bare enhetsflyten med kode, ikke enhver /login-URL.
+              Ikke del koden.
+            </li>
+            <li>
+              Før oppstart: sjekk at gh viser riktig konto og <code className={code}>(keyring)</code> på Mac. Viser den
+              en config-fil, stopp og løs nøkkelringtilgangen. gh kan falle tilbake til klartekst; status viser
+              lagringsmetadata, ikke bevis for at hele innloggingen brukte sikker lagring. Kontroller samme kontos
+              Nav-lisens i{" "}
+              <a href="https://github.com/settings/copilot" className={linkClass}>
+                Copilot-innstillingene
+              </a>
+              .
+            </li>
+            <li>
+              Har du valgt <code className={code}>copilot_auth_mode=env_only</code>, kreves eksportert token. Bare hvis
+              du vil bruke lagret innlogging, velg uttrykkelig{" "}
+              <code className={code}>nav-pilot config set copilot_auth_mode auto</code> før neste steg. Ellers behold
+              env_only og start med et Copilot-token i stedet for neste steg. nav-pilot endrer ikke modusen automatisk.
+            </li>
+            <li>
+              Etter konto- og lagringskontrollen, kjør fra repoet ditt og prøv en vanlig melding uten /login:
+              <CodeBlock compact>{`(
+unset COPILOT_GITHUB_TOKEN GH_TOKEN GITHUB_TOKEN GH_HOST GH_REPO
+cplt doctor --agent copilot
+nav-pilot --client copilot
+)`}</CodeBlock>
+              På Mac kan cplt sende gh-tokenet som GH_TOKEN og bevisst stenge nøkkelringen. Doctor bekrefter ikke
+              Copilot-tilgang. cplt henter foreløpig ikke Copilots eget token fra nøkkelringen; senere uthenting er ikke
+              levert. Årsaken til nettleserfeilen er fortsatt ukjent. For videre feilsøking og selvstendig Copilot, se{" "}
+              <a href={`${KNOWN_IMPACTS}#copilots-vs-code-launcher-and-keychain-substitution`} className={linkClass}>
+                cplts known-impacts.md
+              </a>
+              . Noter versjonene, om du brukte /login og feilen før nøkkelringmeldingen hvis det fortsatt feiler.
+            </li>
+          </VStack>
           <BodyLong>
-            Gjelder Linux og WSL. Nøkkelringen nås over D-Bus, som cplt stenger, så agenten ber deg lagre tokenet i
-            klartekst. Logg inn på maskinen din, og la cplt sende tokenet inn:
+            Linux og WSL: cplt stenger nøkkelringen over D-Bus. Etter innlogging og kontroll av konto og sikker lagring
+            på maskinen, kan du la cplt sende gh-tokenet inn:
           </BodyLong>
-          <CodeBlock compact>
-            {`gh auth login                                        # utenfor cplt, én gang
-cplt config set gh_guard.inject_token true --force`}
-          </CodeBlock>
+          <CodeBlock compact>{`cplt config set gh_guard.inject_token true --force`}</CodeBlock>
           <BodyLong>
             Tokenet ligger da i miljøet til alle prosesser i sandkassen, og alle kan lese det. Derfor krever cplt{" "}
-            <code className={code}>--force</code>.
+            <code className={code}>--force</code> og at gh-vakta er på.
           </BodyLong>
 
           <LinkableHeading id="copilot-sandbox" size="small" level="3">

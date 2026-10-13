@@ -433,8 +433,9 @@ func cmdDoctor() error {
 	// Push and PRs from inside the sandbox need a gh login the client can read.
 	fmt.Printf("    • GitHub sign-in (push and PRs)\n")
 	ghCfg, _ := readConfig()
+	ghResolved := resolve(ghCfg, CLIOverrides{})
 	gh := ghProbe()
-	reportGHAuth(os.Stdout, "      ", resolve(ghCfg, CLIOverrides{}).Client, gh.st, gh.detail)
+	reportGHAuth(os.Stdout, "      ", ghResolved.Client, ghResolved.CopilotAuthMode, gh.st, gh.detail)
 	fmt.Println()
 
 	// 3b. Model pins

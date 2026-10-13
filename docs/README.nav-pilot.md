@@ -435,15 +435,40 @@ Den ukentlige kjøringen er av til repovariabelen `SUBAGENT_PIN_CANARY` er `true
 > `copilot --agent nav-pilot` uten cplt kjører uten sandbox.
 
 > **Auth-detalj (Copilot/cplt):** nav-pilot henter ikke ut GitHub-tokenet selv.
-> Med `cplt`s gh-guard på, som den er i `standard` og `strict`, skaffer `cplt` tokenet: den bruker `GH_TOKEN`,
-> `GITHUB_TOKEN` eller `COPILOT_GITHUB_TOKEN` hvis en av dem er satt, ellers
-> `gh auth token` utenfor sandkassen, og leverer det via en 0600-fil som leses
-> én gang. Med gh-guarden av gjør `cplt` ingenting her, og Copilot autentiserer
-> selv. `copilot_auth_mode` styrer hvilke kilder som slipper fram: `auto`
-> (standard) begrenser ingenting, `env_only` avbryter oppstart hvis tokenet ikke
-> allerede ligger i miljøet, og `gh_only` fjerner token-variablene fra
-> barnemiljøet. Dette er en konfigurasjonskontroll, ikke en sikkerhetsgrense.
-> Se [SECURITY.md](../SECURITY.md).
+> `copilot_auth_mode` filtrerer miljøet nav-pilot gir til cplt, ikke hvilken
+> konto eller kilde Copilot bruker. `auto` (standard) bevarer token-variablene,
+> `env_only` avbryter hvis ingen av `GH_TOKEN`, `GITHUB_TOKEN` eller
+> `COPILOT_GITHUB_TOKEN` har en verdi som ikke er blank, og `gh_only` fjerner
+> alle tre fra miljøet før cplt starter. cplt kan nekte eller sende inn token,
+> og Copilot kan bruke lagret innlogging. Ingen av valgene garanterer hvilken
+> konto eller kilde Copilot bruker. Se [SECURITY.md](../SECURITY.md).
+
+Hvis innlogging i sandkassen feiler, avslutt økten og logg inn manuelt i en
+terminal utenfor cplt. nav-pilot starter aldri innlogging. gh kan falle tilbake
+til klartekst hvis nøkkelringen svikter:
+
+```sh
+(unset GH_TOKEN GITHUB_TOKEN COPILOT_GITHUB_TOKEN GH_HOST GH_REPO; gh auth login --hostname github.com --web)
+(unset GH_TOKEN GITHUB_TOKEN COPILOT_GITHUB_TOKEN GH_HOST GH_REPO; gh auth status --hostname github.com)
+```
+
+Krev at github.com-kontoene viser `(keyring)` før du starter igjen. Hvis status
+viser en konfigurasjonsfil, stopp og rett tilgangen til nøkkelringen. Status
+viser lagringsmetadata, ikke en garanti om at innloggingen bare brukte sikker
+lagring. Velg en konto med Copilot-tilgang; dette endrer gh-kontoen, ikke
+Copilots egen innlogging. Host-status bekrefter heller ikke autentisering i
+sandkassen. Copilots lagrede innlogging kan fortsatt virke når gh-status feiler.
+
+Med `env_only` må du enten beholde modusen og sende inn et Copilot-token eller
+velge lagret innlogging med `nav-pilot config set copilot_auth_mode auto` før
+den tokenfrie omstarten:
+
+```sh
+(unset GH_TOKEN GITHUB_TOKEN COPILOT_GITHUB_TOKEN GH_HOST GH_REPO; nav-pilot)
+```
+
+Ved push-/PR-feil, kjør `cplt doctor` og `cplt config get gh_guard.enabled`
+utenfor sandkassen. Oppgrader cplt hvis støtte for gh-vaktas token-cache mangler.
 
 ### opencode: Nav-kontekst automatisk
 
@@ -710,7 +735,7 @@ Nøklene, med flagget som overstyrer dem for én kjøring. Tabellen lages fra ko
 | `hook_injection_note` | — | true · false (standard: true) | Sett en merknad foran verktøyresultater som ser ut som instrukser til modellen («ignore previous instructions», rollemarkører), så modellen behandler dem som data. Stopper ingenting. |
 | `hook_action_check` | — | off · log (standard: log) | Spør den lokale decide-modellen om en risikabel skallkommando (kubectl, terraform apply, rm -r, git push --force og lignende) står i forhold til formålet. log lagrer svaret og stopper ingenting. Krever lokal modell. |
 | `mcp_hosts` | — | ask · off (standard: ask) | Om nav-pilot spør før den åpner cplt for hostene MCP-serverne dine trenger. Hostene hentes fra Navs MCP-register. ask spør én gang per sett, off spør aldri. |
-| `copilot_auth_mode` | — | auto · env_only · gh_only (standard: auto) | Hvilken innlogging som når cplt for Copilot. auto begrenser ingenting; env_only krever et token i GH_TOKEN, GITHUB_TOKEN eller COPILOT_GITHUB_TOKEN; gh_only fjerner dem. |
+| `copilot_auth_mode` | — | auto · env_only · gh_only (standard: auto) | Filtrerer miljøet før cplt starter. auto endrer ingenting; env_only krever et ikke-blankt token i GH_TOKEN, GITHUB_TOKEN eller COPILOT_GITHUB_TOKEN; gh_only fjerner variablene. Ingen av dem garanterer hvilken innlogging cplt eller Copilot bruker. |
 <!-- config-keys:end -->
 <!-- prettier-ignore-end -->
 

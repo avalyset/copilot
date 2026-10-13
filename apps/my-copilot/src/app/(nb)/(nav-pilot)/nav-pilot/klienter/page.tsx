@@ -499,9 +499,10 @@ export default function Klienter() {
         </BodyLong>
         <Box background="info-soft" borderRadius="8" padding="space-16">
           <BodyShort size="small">
-            nav-pilot henter ikke GitHub-tokenet selv. Er gh-vakta i cplt på, henter cplt det fra {c("GH_TOKEN")},{" "}
-            {c("GITHUB_TOKEN")}, {c("COPILOT_GITHUB_TOKEN")} eller {c("gh auth token")}. {c("copilot_auth_mode")}{" "}
-            begrenser kildene: {c("env_only")} krever token i miljøet, {c("gh_only")} fjerner token-variablene.
+            nav-pilot henter ikke GitHub-tokenet selv. Copilot prioriterer {c("COPILOT_GITHUB_TOKEN")}, {c("GH_TOKEN")},
+            så {c("GITHUB_TOKEN")}; cplt kan hente {c("gh auth token --hostname github.com")}. {c("copilot_auth_mode")}{" "}
+            filtrerer bare miljøet før cplt starter: {c("env_only")} krever token der, {c("gh_only")} fjerner
+            variablene. Ingen av dem garanterer hvilken innlogging cplt eller Copilot bruker etterpå.
           </BodyShort>
         </Box>
       </Section>

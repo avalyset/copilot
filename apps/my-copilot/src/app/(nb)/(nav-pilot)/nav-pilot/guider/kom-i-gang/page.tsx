@@ -80,13 +80,20 @@ export default function KomIGang() {
           <BodyLong>
             Agenten pusher og åpner pull requests med gh-innloggingen din. Logg inn én gang, utenfor sandkassen:
           </BodyLong>
-          <CodeBlock compact>{`gh auth login`}</CodeBlock>
+          <CodeBlock
+            compact
+          >{`(unset GH_TOKEN GITHUB_TOKEN COPILOT_GITHUB_TOKEN GH_HOST GH_REPO; gh auth login --hostname github.com --web)
+(unset GH_TOKEN GITHUB_TOKEN COPILOT_GITHUB_TOKEN GH_HOST GH_REPO; gh auth status --hostname github.com)`}</CodeBlock>
           <BodyLong>
-            <strong>OpenCode eller pi på Mac:</strong> gh legger tokenet i nøkkelringen til macOS, og cplt slipper ikke
-            disse klientene til nøkkelringen. Da feiler push og pull requests i sandkassen. Logg inn slik at gh lagrer
-            tokenet i sin egen fil i stedet:
+            På Mac skal gh vise riktig konto og <code className={code}>(keyring)</code>. Viser den en config-fil, stopp
+            og løs nøkkelringtilgangen. Med gh-vakta på trenger OpenCode og pi ikke klartekstlagring i nyere cplt. Åpner
+            ikke /login nettleseren, får du «System vault not available», eller har du valgt env_only? Følg{" "}
+            <NextLink href="/nav-pilot/guider/cplt-feilmeldinger#login-nettleser" className={linkClass}>
+              innloggingsoppskriften
+            </NextLink>
+            . OpenCode logger du inn med <code className={code}>/connect</code>;{" "}
+            <code className={code}>nav-pilot auth login</code> og innloggingen på nettstedet logger ikke klienten inn.
           </BodyLong>
-          <CodeBlock compact>{`gh auth login --insecure-storage`}</CodeBlock>
           <BodyLong>
             <strong>Kloner du med SSH</strong> (<code className={code}>git@github.com:…</code>)? cplt stenger{" "}
             <code className={code}>~/.ssh</code>, så push over SSH feiler i sandkassen. Få git til å bruke HTTPS mot
@@ -103,7 +110,7 @@ export default function KomIGang() {
           </LinkableHeading>
           <BodyLong>Gå til et repo og start nav-pilot:</BodyLong>
           <CodeBlock compact>{`cd ~/src/min-app
-nav-pilot`}</CodeBlock>
+(unset GH_TOKEN GITHUB_TOKEN COPILOT_GITHUB_TOKEN GH_HOST GH_REPO; nav-pilot)`}</CodeBlock>
           <BodyLong>
             Første gang spør nav-pilot om noen innstillinger. Enter gir det anbefalte valget. Spørsmålene er på engelsk:
           </BodyLong>

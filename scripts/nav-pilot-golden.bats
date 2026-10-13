@@ -774,7 +774,8 @@ run_suite() {
 #!/bin/bash
 echo "\$GRADLE_OPTS" >>"$SHIM/gradle-opts"
 base="\$(grep -o 'daemon.registry.base=[^ ]*' <<<"\$GRADLE_OPTS" | cut -d= -f2)"
-mkdir -p "\$base" && cd "\$base" && (echo \$BASHPID >>"$SHIM/daemon-pids"; exec -a "GradleDaemon 8.14.5" sleep 300) >/dev/null 2>&1 &
+mkdir -p "\$base" && cd "\$base"
+(echo \$BASHPID >>"$SHIM/daemon-pids"; exec -a "GradleDaemon 8.14.5" sleep 300) >/dev/null 2>&1 &
 exit 0
 EOF
   chmod +x "$SHIM/gradle"
@@ -785,8 +786,15 @@ EOF
     [[ "$opts" == *" -Dorg.gradle.daemon.registry.base="*"/gradle-daemon" ]]
     [[ "$opts" != *daemon=false* ]]
   done <"$SHIM/gradle-opts"
-  sleep 0.3
-  while read -r pid; do ! kill -0 "$pid" 2>/dev/null; done <"$SHIM/daemon-pids"
+  # Orphaned children can remain zombies after the reaper stops them.
+  local pid _
+  while read -r pid; do
+    for _ in $(seq 100); do
+      [[ "$(ps -o stat= -p "$pid")" != [^Z]* ]] && break
+      sleep 0.1
+    done
+    [[ "$(ps -o stat= -p "$pid")" != [^Z]* ]]
+  done <"$SHIM/daemon-pids"
 }
 
 @test "teardown_file stops this file's Gradle daemon and no one else's" {
